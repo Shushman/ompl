@@ -16,7 +16,7 @@ namespace ompl
         public:
 
             RejectionInfPrecomputedSampler(const ProblemDefinitionPtr &probDefn,
-                                           const StateSpace *space, const std::vector<const State *> &states);
+                                           const StateSpacePtr space, const std::vector<const State *> &states);
 
             bool sampleUniform(State *statePtr, const Cost &maxCost) override;
 
@@ -26,12 +26,14 @@ namespace ompl
 
             double getInformedMeasure(const Cost & /*minCost*/, const Cost & /*maxCost*/) const override;
 
+            bool hasInformedMeasure() const;
+
             //All states have been sampled
             bool areStatesExhausted();
 
         protected:
 
-            const StateSpace *space_;
+            const StateSpacePtr space_;
 
             const std::vector<const State *> &states_;
 

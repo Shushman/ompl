@@ -8,7 +8,7 @@ namespace ompl
     namespace base
     {
         RejectionInfPrecomputedSampler::RejectionInfPrecomputedSampler(const ProblemDefinitionPtr &probDefn,
-                                           const StateSpace *space, const std::vector<const State *> &states)
+                                           const StateSpacePtr space, const std::vector<const State *> &states)
             : InformedSampler(probDefn, states.size()), 
               space_(space), 
               states_(states), 
@@ -66,6 +66,11 @@ namespace ompl
         double RejectionInfPrecomputedSampler::getInformedMeasure(const Cost & /*minCost*/, const Cost & /*maxCost*/) const
         {
             return InformedSampler::space_->getMeasure();
+        }
+
+        bool RejectionInfPrecomputedSampler::hasInformedMeasure() const
+        {
+            return false;
         }
 
         bool RejectionInfPrecomputedSampler::areStatesExhausted()

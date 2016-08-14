@@ -101,6 +101,7 @@ namespace ompl
           ,  // Gets set in setup to the proper calls from OptimizationObjective
           hasSolution_(false)
           , stopLoop_(false)
+          , hasFullySearched_(false)
           , approximateSoln_(false)
           , approximateDiff_(-1.0)
           , numIterations_(0u)
@@ -449,6 +450,7 @@ namespace ompl
             k_rgg_ = 0.0;  // This is a double for better rounding later
             k_ = 0u;
             bestCost_ = ompl::base::Cost(std::numeric_limits<double>::infinity());
+            r_max_dynamic = std::numeric_limits<double>::infinity();
             bestLength_ = 0u;
             prunedCost_ = ompl::base::Cost(std::numeric_limits<double>::infinity());
             prunedMeasure_ = Planner::si_->getSpaceMeasure();
@@ -494,11 +496,11 @@ namespace ompl
             }
 
             // Run the outerloop until we're stopped, a suitable cost is found, or until we find the minimum possible
-            // cost within tolerance:
+            // cost within tolerance, OR until all states are exhausted:
             while (opt_->isSatisfied(bestCost_) == false && ptc == false &&
                    (opt_->isCostBetterThan(minCost_, bestCost_) == true ||
                     Planner::pis_.haveMoreStartStates() == true || Planner::pis_.haveMoreGoalStates() == true) &&
-                   stopLoop_ == false)
+                   stopLoop_ == false && hasFullySearched_ == false)
             {
                 this->iterate();
             }
@@ -512,6 +514,11 @@ namespace ompl
             else
             {
                 this->endFailureMessage();
+            }
+
+            if(hasFullySearched_ == true)
+            {
+              OMPL_INFORM("Graph of samples has been searched fully");
             }
 
             // PlannerStatus(addedSolution, approximate)
@@ -761,7 +768,7 @@ namespace ompl
                 else
                 {
                     // If not, then we're either just starting the problem, or just finished a batch. Either way, make a
-                    // batch of samples and fill the queue for the first time:
+                    // batch of samples and/or edges and fill the queue for the first time:
                     this->newBatch();
                 }
             }
@@ -836,6 +843,11 @@ namespace ompl
                     intQueue_->finish();
                 }
             }  // Integrated queue not empty.
+
+            if(r_ > r_max_dynamic && sampler_ -> areStatesExhausted() == true)
+            {
+                hasFullySearched_ = true;
+            }
         }
 
         void SDstarBase::newBatch()
@@ -1291,12 +1303,13 @@ namespace ompl
                 }
 
                 // If we have at least one start and goal, allocate a sampler
-                if (startVertices_.size() > 0u && goalVertices_.size() > 0u)
+                /*if (startVertices_.size() > 0u && goalVertices_.size() > 0u)
                 {
                     // There is a start and goal, allocate
-                    sampler_ =
-                        opt_->allocInformedStateSampler(Planner::pdef_, std::numeric_limits<unsigned int>::max());
-                }
+                    //sampler_ =
+                        //opt_->allocInformedStateSampler(Planner::pdef_, std::numeric_limits<unsigned int>::max());
+                      sampler_ = std::make_shared< ompl::base::RejectionInfPrecomputedSampler >(Planner::pdef_, Planner::si_->getStateSpace(), states_);
+                }*/
                 // No else, this will get allocated when we get the updated start/goal.
 
                 // Was there an existing queue that needs to be rebuilt?
@@ -1635,6 +1648,9 @@ namespace ompl
                 // Update the best cost:
                 bestCost_ = newCost;
 
+                //Update r_max_dynamic too
+                r_max_dynamic = bestCost_.value();
+
                 // and best length
                 bestLength_ = curGoalVertex_->getDepth() + 1u;
 
@@ -1931,6 +1947,7 @@ namespace ompl
             // the initial call (i.e., the 0 batch):
             if (numBatches_ != 0u)
             {
+              //Minimum of sum and total samples
                 N = N + samplesPerBatch_;
             }
             // No else
@@ -2299,6 +2316,12 @@ namespace ompl
         bool SDstarBase::getStopOnSolnImprovement() const
         {
             return stopOnSolnChange_;
+        }
+
+        void SDstarBase::initSampler(const std::vector<const ompl::base::State *> &states)
+        {
+          sampler_ = std::make_shared< ompl::base::RejectionInfPrecomputedSampler >(Planner::pdef_, Planner::si_->getStateSpace(), states);
+          numTotalSamples_ = states.size();
         }
 
         ompl::base::Cost SDstarBase::bestCost() const

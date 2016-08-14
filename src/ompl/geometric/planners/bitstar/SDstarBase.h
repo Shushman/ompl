@@ -53,7 +53,7 @@
 // The nearest neighbours structure
 #include "ompl/datastructures/NearestNeighbors.h"
 // The informed sampler structure
-#include "ompl/base/samplers/InformedStateSampler.h"
+#include "ompl/base/samplers/informed/RejectionInfPrecomputedSampler.h"
 // Planner includes:
 //#include "ompl/geometric/planners/PlannerIncludes.h"
 // BIT* Includes:
@@ -151,6 +151,9 @@ namespace ompl
             typedef std::pair<VertexConstPtr, VertexConstPtr> VertexConstPtrPair;
             /** \brief The OMPL::NearestNeighbors structure. */
             typedef std::shared_ptr<NearestNeighbors<VertexPtr>> VertexPtrNNPtr;
+
+            //For sampler
+            typedef std::shared_ptr<ompl::base::RejectionInfPrecomputedSampler> RejectionInfPrecomputedSamplerPtr;
 
             /** \brief Construct! */
             SDstarBase(const base::SpaceInformationPtr &si, const std::string &name = "SDstarBase");
@@ -295,6 +298,9 @@ namespace ompl
 
             /** \brief Get whether BIT* stops each time a solution is found. */
             bool getStopOnSolnImprovement() const;
+
+            void initSampler(const std::vector<const ompl::base::State *> &states);
+
             ///////////////////////////////////////
 
         protected:
@@ -311,10 +317,10 @@ namespace ompl
             virtual void iterate();
 
             /** \brief Initialize variables for a new batch */
-            void newBatch();
+            virtual void newBatch();
 
             /** \brief Update the list of free samples */
-            void updateSamples();
+            virtual void updateSamples();
 
             /** \brief Prune the problem. Returns true if pruning was done. */
             virtual bool prune();
@@ -362,7 +368,7 @@ namespace ompl
             void updateGoalVertex();
 
             /** \brief Add a sample */
-            void addSample(const VertexPtr &newSample);
+            virtual void addSample(const VertexPtr &newSample);
 
             /** \brief Add a vertex to the graph */
             void addVertex(const VertexPtr &newVertex, const bool &removeFromFree);
@@ -586,7 +592,7 @@ namespace ompl
             ompl::RNG rng_;
 
             /** \brief State sampler */
-            ompl::base::InformedSamplerPtr sampler_;
+            RejectionInfPrecomputedSamplerPtr sampler_;
 
             /** \brief Optimization objective copied from ProblemDefinition */
             ompl::base::OptimizationObjectivePtr opt_;
@@ -633,12 +639,18 @@ namespace ompl
             /** \brief The current r-disc RGG connection radius */
             double r_;
 
+
+            // The current radius of relevant nodes
+            double r_max_dynamic;
+
             /** \brief The minimum k-nearest RGG connection term. Only a function of state dimension, so can be
              * calculated once. Left as a double for later accuracy in calculate k */
             double k_rgg_;
 
             /** \brief The current k-nearest RGG connection number */
             unsigned int k_;
+
+            unsigned int numTotalSamples_;
 
             /** \brief The best cost found to date. This is the maximum total-heuristic cost of samples we'll consider.
              * Accessible via bestCostProgressProperty */
@@ -666,6 +678,12 @@ namespace ompl
 
             /** \brief A manual stop on the solve loop */
             bool stopLoop_;
+
+            bool hasFullySearched_;
+
+
+
+            //std::vector<const ompl::base::State *> &states_;
 
             ///////////////////////////////////////
 
