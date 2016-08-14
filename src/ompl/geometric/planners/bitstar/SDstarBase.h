@@ -368,7 +368,7 @@ namespace ompl
             void updateGoalVertex();
 
             /** \brief Add a sample */
-            virtual void addSample(const VertexPtr &newSample);
+            void addSample(const VertexPtr &newSample);
 
             /** \brief Add a vertex to the graph */
             void addVertex(const VertexPtr &newVertex, const bool &removeFromFree);

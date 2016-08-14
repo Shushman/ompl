@@ -841,13 +841,15 @@ namespace ompl
                     // Else, I cannot improve the current solution, and as the queue is perfectly sorted and I am the
                     // best edge, no one can improve the current solution . Give up on the batch:
                     intQueue_->finish();
+
+                    if(r_ >= r_max_dynamic && sampler_ -> areStatesExhausted() == true)
+                    {
+                        hasFullySearched_ = true;
+                    }
                 }
             }  // Integrated queue not empty.
 
-            if(r_ > r_max_dynamic && sampler_ -> areStatesExhausted() == true)
-            {
-                hasFullySearched_ = true;
-            }
+            
         }
 
         void SDstarBase::newBatch()
