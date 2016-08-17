@@ -102,6 +102,7 @@ namespace ompl
         void BITstar::IntegratedQueue::insertEdge(const VertexPtrPair &newEdge)
         {
             // Call my helper function:
+            std::cout<<"INSERTING EDGE!!!"<<std::endl;
             this->edgeInsertHelper(newEdge, edgeQueue_.end());
         }
 
@@ -910,6 +911,7 @@ namespace ompl
 
         void BITstar::IntegratedQueue::expandVertex(const VertexPtr &vertex)
         {
+
             // Should we expand this vertex?
             if (this->vertexPruneCondition(vertex) == false)
             {
@@ -980,6 +982,7 @@ namespace ompl
                     {
                         // Get the set of nearby vertices
                         nearVerticesFunc_(vertex, &neighbourVertices);
+                        //OMPL_INFORM("expandVertex called inside prune check with %d neighbor verts!",neighbourVertices.size());
                     }
                     // No else
 
@@ -1024,6 +1027,7 @@ namespace ompl
             // Variable:
             // The edge:
             VertexPtrPair newEdge;
+
 
             // Make the edge
             newEdge = std::make_pair(parent, child);

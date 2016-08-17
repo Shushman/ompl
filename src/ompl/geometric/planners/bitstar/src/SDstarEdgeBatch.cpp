@@ -1,7 +1,7 @@
 //Author : Shushman Choudhury
 
-#include "ompl/geometric/planners/bitstar/SDstarNoBatch.h"
-
+#include "ompl/geometric/planners/bitstar/SDstarEdgeBatch.h"
+#include <iostream>
 #include "ompl/util/Console.h"
 #include "ompl/util/Exception.h"
 #include "ompl/base/samplers/informed/RejectionInfPrecomputedSampler.h"
@@ -10,19 +10,28 @@ namespace ompl
 {
     namespace geometric
     {
-        SDstarNoBatch::SDstarNoBatch(const ompl::base::SpaceInformationPtr &si, const std::string &name)
-        : ompl::geometric::SDstarBase(si,name)
+        SDstarEdgeBatch::SDstarEdgeBatch(const ompl::base::SpaceInformationPtr &si, const std::string &name)
+        : ompl::geometric::SDstarBase(si,name),
+          radInflFactor_(0.0)
         {
         }
 
-        SDstarNoBatch::~SDstarNoBatch() = default;
+        SDstarEdgeBatch::~SDstarEdgeBatch() = default;
 
-        void SDstarNoBatch::newBatch()
+        void SDstarEdgeBatch::setRadiusInflationFactor(double radInflFactor)
         {
-            if(numBatches_ >= 1)
-            {
-                return;
-            }
+            radInflFactor_ = radInflFactor;
+        }
+
+        double SDstarEdgeBatch::getRadiusInflationFactor() const
+        {
+            return radInflFactor_;
+        }
+
+
+        void SDstarEdgeBatch::newBatch()
+        {
+            OMPL_INFORM("New Batch called!");
 
             ++numBatches_;
 
@@ -34,8 +43,28 @@ namespace ompl
                 this->updateStartAndGoalStates(ompl::base::plannerAlwaysTerminatingCondition());
             }
 
+
             this->prune();
 
+            
+            if(numBatches_ > 1)
+            {
+                std::vector<VertexPtr> vertsInTree;
+                vertexNN_ -> list(vertsInTree);
+                for(auto &vert : vertsInTree)
+                {
+                    vert->markUnexpandedToVertices();
+                }
+            }
+            
+            /*
+            std::cout<<"VertexNN size is "<<vertexNN_->size()<<std::endl;
+            std::cout<<"freeStateNN size is "<<freeStateNN_->size()<<std::endl;
+            std::cout<<"Integrated Queue has "<<intQueue_->numEdges()<<" edges and "<<intQueue_->numVertices()<<" vertices"<<std::endl;
+            */
+
+            //int a;
+            //std::cin >> a;
             costSampled_ = minCost_;
 
             this -> updateNearestTerms();
@@ -63,9 +92,13 @@ namespace ompl
 
         }
 
-
-        void SDstarNoBatch::updateSamples()
+        void SDstarEdgeBatch::updateSamples()
         {
+            if(numBatches_ > 1)
+            {
+                return;
+            }
+
             ompl::base::Cost costReqd = bestCost_;
 
             if (opt_->isCostBetterThan(costSampled_, costReqd))
@@ -92,21 +125,15 @@ namespace ompl
                         }
                     }
                 }
-
+            
                 OMPL_INFORM("SDstarNoBatch : All states exhausted and %d samples!",numSamples_);
                 costSampled_ = costReqd;
             }
         }
 
 
-        void SDstarNoBatch::updateNearestTerms()
+        void SDstarEdgeBatch::updateNearestTerms()
         {
-            //Should only be called once
-            if(numBatches_ >= 1)
-            {
-                return;
-            }
-
             unsigned int N = numTotalSamples_;
 
             //Be lazy
@@ -117,18 +144,34 @@ namespace ompl
             }
             else
             {
-                if (useKNearest_ == true)
+                if(numBatches_ > 1)
                 {
-                    //All but self
-                    k_ = N - 1;
+                    if (useKNearest_ == true)
+                    {
+                        k_ = k_ * radInflFactor_;
+                    }
+                    else
+                    {
+                        r_ = r_ * radInflFactor_;
+                    }
                 }
                 else
                 {
-                    //Infinite since only 1 batch
-                    r_ = std::numeric_limits<double>::infinity();
+                    if (useKNearest_ == true)
+                    {
+                        k_ = this->calculateK(N);
+                    }
+                    else
+                    {
+                        r_ = this->calculateR(N);
+                    }
                 }
             }
+            if(useKNearest_)
+                OMPL_INFORM("Current K is %d",k_);
+            else
+                OMPL_INFORM("Current Radius is %f",r_);
         }
 
-    }
-}
+    } // namespace geometric
+} // namespace ompl

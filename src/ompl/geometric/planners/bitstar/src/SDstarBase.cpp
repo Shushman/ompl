@@ -451,6 +451,7 @@ namespace ompl
             k_ = 0u;
             bestCost_ = ompl::base::Cost(std::numeric_limits<double>::infinity());
             r_max_dynamic = std::numeric_limits<double>::infinity();
+            k_max_dynamic = std::numeric_limits<int>::infinity();
             bestLength_ = 0u;
             prunedCost_ = ompl::base::Cost(std::numeric_limits<double>::infinity());
             prunedMeasure_ = Planner::si_->getSpaceMeasure();
@@ -758,6 +759,15 @@ namespace ompl
             // Is the edge queue empty
             if (intQueue_->isEmpty() == true)
             {
+                bool dyn_cond = (useKNearest_ && k_ > k_max_dynamic)
+                            ||  (!useKNearest_ && r_ > r_max_dynamic);
+
+                if(dyn_cond && sampler_ -> areStatesExhausted() == true)
+                {
+                    hasFullySearched_ = true;
+                    return;
+                }
+
                 // Is it also unsorted?
                 if (intQueue_->isSorted() == false)
                 {
@@ -841,11 +851,6 @@ namespace ompl
                     // Else, I cannot improve the current solution, and as the queue is perfectly sorted and I am the
                     // best edge, no one can improve the current solution . Give up on the batch:
                     intQueue_->finish();
-
-                    if(r_ >= r_max_dynamic && sampler_ -> areStatesExhausted() == true)
-                    {
-                        hasFullySearched_ = true;
-                    }
                 }
             }  // Integrated queue not empty.
 
@@ -1040,6 +1045,9 @@ namespace ompl
             }
             // No else, why was I called?
 
+            if(hasSolution_)
+              k_max_dynamic = freeStateNN_->size() + vertexNN_->size() - 1;
+
             return vertexPruned;
         }
 
@@ -1127,6 +1135,7 @@ namespace ompl
                  curVertex = curVertex->getParentConst())
             {
                 // Check the case where the chain ends incorrectly. This is unnecessary but sure helpful in debugging:
+                std::cout<<curVertex->getId()<<" <- ";
                 if (curVertex->hasParent() == false)
                 {
                     throw ompl::Exception("The path to the goal does not originate at a start state. Something went "
@@ -1136,6 +1145,7 @@ namespace ompl
                 // Push back the parent into the vector as a state pointer:
                 reversePath.push_back(curVertex->getParentConst()->stateConst());
             }
+            std::cout<<"\n";
             return reversePath;
         }
 
@@ -1532,6 +1542,7 @@ namespace ompl
 
             // If the path to the goal has changed, we may need to update the cached info about the solution cost or
             // solution length:
+
             this->updateGoalVertex();
         }
 
@@ -1633,6 +1644,7 @@ namespace ompl
             // Did we update the goal?
             if (goalUpdated == true)
             {
+                std::cout<<"GOAL VERTEX UPDATED!"<<std::endl;
                 // We have a better solution!
                 if (hasSolution_ == false)
                 {

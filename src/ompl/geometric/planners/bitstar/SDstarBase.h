@@ -643,6 +643,8 @@ namespace ompl
             // The current radius of relevant nodes
             double r_max_dynamic;
 
+            int k_max_dynamic;
+
             /** \brief The minimum k-nearest RGG connection term. Only a function of state dimension, so can be
              * calculated once. Left as a double for later accuracy in calculate k */
             double k_rgg_;
