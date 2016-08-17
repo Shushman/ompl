@@ -16,10 +16,9 @@
 #include "ompl/geometric/planners/bitstar/datastructures/Vertex.h"
 #include "ompl/geometric/planners/bitstar/SDstarBase.h"
 
-// SDstarNoBatch
-// Does not do any vertex or edge batching. Adds all vertices 
-
-
+// SDstarEdgeBatch
+// Adds all vertices at start and gradually adds more edges
+// based on the radius of connectivity
 
 namespace ompl
 {
