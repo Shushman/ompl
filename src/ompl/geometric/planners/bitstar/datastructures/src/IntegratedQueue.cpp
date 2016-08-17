@@ -847,6 +847,12 @@ namespace ompl
                 edgeQueue->push_back(eIter.second);
             }
         }
+
+
+        void BITstar::IntegratedQueue::setNearSamplesFunc(NeighbourhoodFunc nearSamplesFunc)
+        {
+            nearSamplesFunc_ = nearSamplesFunc;
+        }
         /////////////////////////////////////////////////////////////////////////////////////////////
 
         /////////////////////////////////////////////////////////////////////////////////////////////

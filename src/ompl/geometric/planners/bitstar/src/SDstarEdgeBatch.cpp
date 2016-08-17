@@ -1,7 +1,8 @@
 //Author : Shushman Choudhury
 
-#include "ompl/geometric/planners/bitstar/SDstarEdgeBatch.h"
 #include <iostream>
+#include <functional>
+#include "ompl/geometric/planners/bitstar/SDstarEdgeBatch.h"
 #include "ompl/util/Console.h"
 #include "ompl/util/Exception.h"
 #include "ompl/base/samplers/informed/RejectionInfPrecomputedSampler.h"
@@ -32,7 +33,10 @@ namespace ompl
         void SDstarEdgeBatch::newBatch()
         {
             OMPL_INFORM("New Batch called!");
-
+            if(numBatches_ == 1){
+                //std::function<unsigned int(const VertexPtr &, std::vector<VertexPtr> *)> funcptr = nearestNewRadVertices;
+                intQueue_->setNearSamplesFunc(std::bind(&SDstarEdgeBatch::nearestNewRadVertices, this, std::placeholders::_1, std::placeholders::_2 ));
+            }
             ++numBatches_;
 
             intQueue_->reset();
@@ -141,6 +145,7 @@ namespace ompl
             {
                 k_ = startVertices_.size() + goalVertices_.size();
                 r_ = std::numeric_limits<double>::infinity();
+                prevRadius_ = 0.0;
             }
             else
             {
@@ -152,6 +157,7 @@ namespace ompl
                     }
                     else
                     {
+                        prevRadius_ = r_;
                         r_ = r_ * radInflFactor_;
                     }
                 }
@@ -163,6 +169,7 @@ namespace ompl
                     }
                     else
                     {
+                        prevRadius_ = 0.0;
                         r_ = this->calculateR(N);
                     }
                 }
@@ -172,6 +179,40 @@ namespace ompl
             else
                 OMPL_INFORM("Current Radius is %f",r_);
         }
+
+        unsigned int SDstarEdgeBatch::nearestNewRadVertices(const VertexPtr &vertex, std::vector<VertexPtr> *neighbourVertices)
+        {
+            ++numNearestNeighbours_;
+
+            if (useKNearest_ == true)
+            {
+                vertexNN_->nearestK(vertex, k_, *neighbourVertices);
+                return k_;
+            }
+            else
+            {
+                std::vector<VertexPtr> oldNbrs, newNbrs;
+
+                if(prevRadius_ == 0.0)
+                {
+                    vertexNN_->nearestR(vertex, r_, *neighbourVertices);
+                }
+                else{
+                    //Get old nbrs
+                    vertexNN_->nearestR(vertex, prevRadius_, oldNbrs);
+
+                    //Get new nbrs
+                    vertexNN_->nearestR(vertex, r_, newNbrs);
+
+                    unsigned int oldSize = oldNbrs.size();
+                    neighbourVertices = new std::vector<VertexPtr>(newNbrs.begin() + oldSize,newNbrs.end());
+
+                }
+                return 0u;
+            }
+        }
+
+
 
     } // namespace geometric
 } // namespace ompl

@@ -284,6 +284,8 @@ namespace ompl
             //////////////////
             ////////////////////////////////
 
+            void setNearSamplesFunc(NeighbourhoodFunc nearSamplesFunc);
+
         private:
             ////////////////////////////////
             // Helpful alias declarations:

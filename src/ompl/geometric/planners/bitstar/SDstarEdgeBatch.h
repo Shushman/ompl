@@ -49,7 +49,11 @@ namespace ompl
 
             void updateNearestTerms() override;
 
+            unsigned int nearestNewRadVertices(const VertexPtr &vertex, std::vector<VertexPtr> *neighbourVertices);
+
             double radInflFactor_;
+
+            double prevRadius_;
 
         };
     } // namespace geometric
