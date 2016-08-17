@@ -299,6 +299,10 @@ namespace ompl
             /** \brief Get whether BIT* stops each time a solution is found. */
             bool getStopOnSolnImprovement() const;
 
+            void setIsHaltonSeq(bool isHaltonSeq);
+
+            bool getIsHaltonSeq() const;
+
             void initSampler(const std::vector<const ompl::base::State *> &states);
 
             ///////////////////////////////////////
@@ -479,6 +483,8 @@ namespace ompl
 
             /** \brief Calculate the k for k-nearest neighours, a function of the current graph */
             unsigned int calculateK(unsigned int N) const;
+
+            double calculateRHalton(unsigned int N) const;
 
             /** \brief Calculate the lower-bounding radius RGG term for asymptotic almost-sure convergence to the
              * optimal path (i.e., r_rrg* in Karaman and Frazzoli IJRR 11). This is a function of the size of the
@@ -682,6 +688,8 @@ namespace ompl
             bool stopLoop_;
 
             bool hasFullySearched_;
+
+            bool isHaltonSeq_;
 
 
 

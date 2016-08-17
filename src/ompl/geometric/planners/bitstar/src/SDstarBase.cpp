@@ -61,6 +61,8 @@
 // For the default optimization objective:
 #include "ompl/base/objectives/PathLengthOptimizationObjective.h"
 
+#include <chrono>
+
 namespace ompl
 {
     namespace geometric
@@ -126,6 +128,7 @@ namespace ompl
           //, useJustInTimeSampling_(false)
           , dropSamplesOnPrune_(false)
           , stopOnSolnChange_(false)
+          , isHaltonSeq_(false)
         {
             // Make sure the default name reflects the default k-nearest setting, if not overridden to something else
             if (useKNearest_ == true && Planner::getName() == "SDstarBase")
@@ -484,8 +487,9 @@ namespace ompl
         ompl::base::PlannerStatus SDstarBase::solve(const ompl::base::PlannerTerminationCondition &ptc)
         {
             Planner::checkValidity();
+            std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
             OMPL_INFORM("%s: Searching for a solution to the given planning problem.", Planner::getName().c_str());
-
+            start = std::chrono::high_resolution_clock::now();
             // Reset the manual stop to the iteration loop:
             stopLoop_ = false;
 
@@ -523,6 +527,13 @@ namespace ompl
             }
 
             // PlannerStatus(addedSolution, approximate)
+            end = std::chrono::high_resolution_clock::now();
+
+            std::chrono::duration<double> elapsed_seconds = end-start;
+            double time_result = elapsed_seconds.count();
+
+            std::cout<<"Total time elapsed - "<<time_result<<std::endl;
+
             return ompl::base::PlannerStatus(hasSolution_, approximateSoln_);
         }
 
@@ -760,7 +771,7 @@ namespace ompl
             if (intQueue_->isEmpty() == true)
             {
                 bool dyn_cond = (useKNearest_ && k_ > k_max_dynamic)
-                            ||  (!useKNearest_ && r_ > r_max_dynamic);
+                            ||  (!useKNearest_ && r_ >= r_max_dynamic);
 
                 if(dyn_cond && sampler_ -> areStatesExhausted() == true)
                 {
@@ -1744,7 +1755,7 @@ namespace ompl
                 return k_;
             }
             else
-            {
+            {   
                 freeStateNN_->nearestR(vertex, r_, *neighbourSamples);
                 return 0u;
             }
@@ -1995,6 +2006,15 @@ namespace ompl
 
             // Calculate the term and return
             return this->minimumRggR() * std::pow(std::log(cardDbl) / cardDbl, 1 / dimDbl);
+        }
+
+        double SDstarBase::calculateRHalton(unsigned int N) const
+        {
+            double dimDbl = static_cast<double>(Planner::si_->getStateDimension());
+
+            double cardDbl = static_cast<double>(N);
+
+            return std::pow(1.0 / cardDbl, 1/ dimDbl);
         }
 
         unsigned int SDstarBase::calculateK(unsigned int N) const
@@ -2331,6 +2351,17 @@ namespace ompl
         {
             return stopOnSolnChange_;
         }
+
+        void SDstarBase::setIsHaltonSeq(bool isHaltonSeq)
+        {
+            isHaltonSeq_ = isHaltonSeq;
+        }
+
+        bool SDstarBase::getIsHaltonSeq() const
+        {
+          return isHaltonSeq_;
+        }
+
 
         void SDstarBase::initSampler(const std::vector<const ompl::base::State *> &states)
         {

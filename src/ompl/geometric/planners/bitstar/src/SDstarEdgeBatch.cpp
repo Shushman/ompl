@@ -170,7 +170,10 @@ namespace ompl
                     else
                     {
                         prevRadius_ = 0.0;
-                        r_ = this->calculateR(N);
+                        if(this->getIsHaltonSeq())
+                            r_ = this->calculateRHalton(N) * 4.0;
+                        else
+                            r_ = this->calculateR(N);
                     }
                 }
             }
