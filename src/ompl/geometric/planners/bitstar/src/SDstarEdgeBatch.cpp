@@ -33,10 +33,10 @@ namespace ompl
         void SDstarEdgeBatch::newBatch()
         {
             OMPL_INFORM("New Batch called!");
-            if(numBatches_ == 1){
+            /*if(numBatches_ == 1){
                 //std::function<unsigned int(const VertexPtr &, std::vector<VertexPtr> *)> funcptr = nearestNewRadVertices;
                 intQueue_->setNearSamplesFunc(std::bind(&SDstarEdgeBatch::nearestNewRadVertices, this, std::placeholders::_1, std::placeholders::_2 ));
-            }
+            }*/
             ++numBatches_;
 
             intQueue_->reset();
@@ -56,19 +56,12 @@ namespace ompl
                 std::vector<VertexPtr> vertsInTree;
                 vertexNN_ -> list(vertsInTree);
                 for(auto &vert : vertsInTree)
-                {
-                    vert->markUnexpandedToVertices();
+                {   
+                    if(vert -> isPruned() == false)
+                        vert->markUnexpandedToVertices();
                 }
             }
             
-            /*
-            std::cout<<"VertexNN size is "<<vertexNN_->size()<<std::endl;
-            std::cout<<"freeStateNN size is "<<freeStateNN_->size()<<std::endl;
-            std::cout<<"Integrated Queue has "<<intQueue_->numEdges()<<" edges and "<<intQueue_->numVertices()<<" vertices"<<std::endl;
-            */
-
-            //int a;
-            //std::cin >> a;
             costSampled_ = minCost_;
 
             this -> updateNearestTerms();
@@ -158,7 +151,7 @@ namespace ompl
                     else
                     {
                         prevRadius_ = r_;
-                        r_ = r_ * radInflFactor_;
+                        r_ = std::min(r_ * radInflFactor_,r_max_dynamic);
                     }
                 }
                 else

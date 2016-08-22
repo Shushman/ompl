@@ -118,6 +118,8 @@ namespace ompl
           , numEdgeCollisionChecks_(0u)
           , numNearestNeighbours_(0u)
           , numEdgesProcessed_(0u)
+          , nbrs_time(0.0)
+          , collcheck_time(0.0)
           , useStrictQueueOrdering_(false)
           , rewireFactor_(2.0)
           , samplesPerBatch_(100u)
@@ -129,6 +131,7 @@ namespace ompl
           , dropSamplesOnPrune_(false)
           , stopOnSolnChange_(false)
           , isHaltonSeq_(false)
+          , isUsingStates_(false)
         {
             // Make sure the default name reflects the default k-nearest setting, if not overridden to something else
             if (useKNearest_ == true && Planner::getName() == "SDstarBase")
@@ -409,6 +412,7 @@ namespace ompl
             prunedGoalVertices_.clear();
             curGoalVertex_.reset();
 
+
             // The list of samples
             if (static_cast<bool>(freeStateNN_) == true)
             {
@@ -487,9 +491,9 @@ namespace ompl
         ompl::base::PlannerStatus SDstarBase::solve(const ompl::base::PlannerTerminationCondition &ptc)
         {
             Planner::checkValidity();
-            std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
+            //std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
             OMPL_INFORM("%s: Searching for a solution to the given planning problem.", Planner::getName().c_str());
-            start = std::chrono::high_resolution_clock::now();
+            //start = std::chrono::high_resolution_clock::now();
             // Reset the manual stop to the iteration loop:
             stopLoop_ = false;
 
@@ -523,16 +527,17 @@ namespace ompl
 
             if(hasFullySearched_ == true)
             {
-              OMPL_INFORM("Graph of samples has been searched fully");
+                OMPL_INFORM("Graph of samples has been searched fully");
             }
 
             // PlannerStatus(addedSolution, approximate)
-            end = std::chrono::high_resolution_clock::now();
+            //end = std::chrono::high_resolution_clock::now();
 
-            std::chrono::duration<double> elapsed_seconds = end-start;
-            double time_result = elapsed_seconds.count();
+            //std::chrono::duration<double> elapsed_seconds = end-start;
+            //double time_result = elapsed_seconds.count();
 
-            std::cout<<"Total time elapsed - "<<time_result<<std::endl;
+            if(bestLength_ == 2)
+                hasFullySearched_ = true;
 
             return ompl::base::PlannerStatus(hasSolution_, approximateSoln_);
         }
@@ -791,6 +796,7 @@ namespace ompl
                     // If not, then we're either just starting the problem, or just finished a batch. Either way, make a
                     // batch of samples and/or edges and fill the queue for the first time:
                     this->newBatch();
+                    hasFullySearched_ = false;
                 }
             }
             else
@@ -1037,7 +1043,10 @@ namespace ompl
                     // Prune the graph. This can be done extra efficiently by using some info in the integrated queue.
                     // This requires access to the nearest neighbour structures so vertices can be moved to free
                     // states.s
-                    numPruned = intQueue_->prune(curGoalVertex_, vertexNN_, freeStateNN_, &recycledSamples_);
+                    if(isUsingStates_)
+                        numPruned = intQueue_->prune(curGoalVertex_, vertexNN_, freeStateNN_, &vertexStates_, &freeStates_, &recycledSamples_);
+                      else
+                        numPruned = intQueue_->prune(curGoalVertex_, vertexNN_, freeStateNN_, &recycledSamples_);
 
                     // The number of vertices and samples pruned are incrementally updated.
                     numVerticesDisconnected_ = numVerticesDisconnected_ + numPruned.first;
@@ -1075,12 +1084,15 @@ namespace ompl
                 // We are, give the queue access to the nearest neighbour structures so vertices can be pruned instead
                 // of resorted.
                 // The number of vertices pruned is also incrementally updated.
-                numPruned = intQueue_->resort(vertexNN_, freeStateNN_, &recycledSamples_);
+                if(isUsingStates_)
+                    numPruned = intQueue_->resort(vertexNN_, freeStateNN_, &vertexStates_, &freeStates_, &recycledSamples_);
+                else
+                    numPruned = intQueue_->resort(vertexNN_, freeStateNN_, &recycledSamples_);
             }
             else
             {
                 // We are not, give it empty NN structs
-                numPruned = intQueue_->resort(VertexPtrNNPtr(), VertexPtrNNPtr(), nullptr);
+                numPruned = intQueue_->resort(VertexPtrNNPtr(), VertexPtrNNPtr(), nullptr, nullptr, nullptr);
             }
 
             // The number of vertices and samples pruned are incrementally updated.
@@ -1146,7 +1158,6 @@ namespace ompl
                  curVertex = curVertex->getParentConst())
             {
                 // Check the case where the chain ends incorrectly. This is unnecessary but sure helpful in debugging:
-                std::cout<<curVertex->getId()<<" <- ";
                 if (curVertex->hasParent() == false)
                 {
                     throw ompl::Exception("The path to the goal does not originate at a start state. Something went "
@@ -1156,7 +1167,6 @@ namespace ompl
                 // Push back the parent into the vector as a state pointer:
                 reversePath.push_back(curVertex->getParentConst()->stateConst());
             }
-            std::cout<<"\n";
             return reversePath;
         }
 
@@ -1389,7 +1399,10 @@ namespace ompl
                         ++numFreeStatesPruned_;
 
                         // Remove the start vertex completely from the queue, they don't have parents
-                        intQueue_->eraseVertex(*startIter, false, vertexNN_, freeStateNN_, &recycledSamples_);
+                        if(isUsingStates_)
+                            intQueue_->eraseVertex(*startIter, false, vertexNN_, freeStateNN_, &vertexStates_, &freeStates_, &recycledSamples_);
+                        else
+                            intQueue_->eraseVertex(*startIter, false, vertexNN_, freeStateNN_, &recycledSamples_);
 
                         // Store the start vertex in the pruned list, in case it later needs to be readded:
                         prunedStartVertices_.push_back(*startIter);
@@ -1430,7 +1443,11 @@ namespace ompl
                             ++numFreeStatesPruned_;
 
                             // And erase it from the queue:
-                            intQueue_->eraseVertex(*goalIter, (*goalIter)->hasParent(), vertexNN_, freeStateNN_,
+                            if(isUsingStates_)
+                                intQueue_->eraseVertex(*goalIter, (*goalIter)->hasParent(), vertexNN_, freeStateNN_,
+                                                   &vertexStates_, &freeStates_,&recycledSamples_);
+                            else
+                              intQueue_->eraseVertex(*goalIter, (*goalIter)->hasParent(), vertexNN_, freeStateNN_,
                                                    &recycledSamples_);
 
                             // Store the start vertex in the pruned list, in case it later needs to be readded:
@@ -1498,7 +1515,12 @@ namespace ompl
         bool SDstarBase::checkEdge(const VertexConstPtrPair &edge)
         {
             ++numEdgeCollisionChecks_;
-            return Planner::si_->checkMotion(edge.first->stateConst(), edge.second->stateConst());
+            std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
+            start = std::chrono::high_resolution_clock::now();
+            bool res = Planner::si_->checkMotion(edge.first->stateConst(), edge.second->stateConst());
+            end = std::chrono::high_resolution_clock::now();
+            collcheck_time += static_cast< std::chrono::duration<double> >(end-start);
+            return res;
         }
 
         void SDstarBase::dropSample(const VertexPtr &oldSample)
@@ -1655,7 +1677,7 @@ namespace ompl
             // Did we update the goal?
             if (goalUpdated == true)
             {
-                std::cout<<"GOAL VERTEX UPDATED!"<<std::endl;
+                //std::cout<<"GOAL VERTEX UPDATED!"<<std::endl;
                 // We have a better solution!
                 if (hasSolution_ == false)
                 {
@@ -1713,6 +1735,7 @@ namespace ompl
 
             // Add to the NN structure:
             freeStateNN_->add(newSample);
+
         }
 
         void SDstarBase::addVertex(const VertexPtr &newVertex, const bool &removeFromFree)
@@ -1755,8 +1778,12 @@ namespace ompl
                 return k_;
             }
             else
-            {   
+            {  
+                std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
+                start = std::chrono::high_resolution_clock::now();
                 freeStateNN_->nearestR(vertex, r_, *neighbourSamples);
+                end = std::chrono::high_resolution_clock::now();
+                nbrs_time += static_cast< std::chrono::duration<double> >(end-start);
                 return 0u;
             }
         }
@@ -1766,6 +1793,7 @@ namespace ompl
             // Increment our counter:
             ++numNearestNeighbours_;
 
+
             if (useKNearest_ == true)
             {
                 vertexNN_->nearestK(vertex, k_, *neighbourVertices);
@@ -1773,7 +1801,11 @@ namespace ompl
             }
             else
             {
+                std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
+                start = std::chrono::high_resolution_clock::now();
                 vertexNN_->nearestR(vertex, r_, *neighbourVertices);
+                end = std::chrono::high_resolution_clock::now();
+                nbrs_time += static_cast< std::chrono::duration<double> >(end-start);
                 return 0u;
             }
         }
@@ -2362,12 +2394,46 @@ namespace ompl
           return isHaltonSeq_;
         }
 
+        void SDstarBase::setIsUsingStates(bool isUsingStates)
+        {
+            isUsingStates_ = isUsingStates;
+        }
+
+        bool SDstarBase::getIsUsingStates() const
+        {
+          return isUsingStates_;
+        }
+
+        bool SDstarBase::getHasFullySearched() const
+        {
+          return hasFullySearched_;
+        }
+
 
         void SDstarBase::initSampler(const std::vector<const ompl::base::State *> &states)
         {
-          sampler_ = std::make_shared< ompl::base::RejectionInfPrecomputedSampler >(Planner::pdef_, Planner::si_->getStateSpace(), states);
-          numTotalSamples_ = states.size();
+            sampler_ = std::make_shared< ompl::base::RejectionInfPrecomputedSampler >(Planner::pdef_, Planner::si_->getStateSpace(), states);
+            numTotalSamples_ = states.size();
         }
+
+        double SDstarBase::getNbrsTime(bool average) const
+        {
+            double total_time = nbrs_time.count();
+            if(average==true){
+              total_time = total_time / numNearestNeighbours_;
+            }
+            return total_time;
+        }
+
+        double SDstarBase::getCollCheckTime(bool average) const
+        {
+            double total_time = collcheck_time.count();
+            if(average==true){
+              total_time = total_time / numEdgeCollisionChecks_;
+            }
+            return total_time;
+        }
+
 
         ompl::base::Cost SDstarBase::bestCost() const
         {

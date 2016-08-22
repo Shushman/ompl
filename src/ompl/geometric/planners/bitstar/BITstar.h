@@ -660,6 +660,9 @@ namespace ompl
             /** \brief A manual stop on the solve loop */
             bool stopLoop_;
 
+            std::vector<VertexPtr> freeStates_;
+            std::vector<VertexPtr> vertexStates_;
+
             ///////////////////////////////////////
 
             ///////////////////////////////////////

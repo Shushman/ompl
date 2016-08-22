@@ -39,11 +39,19 @@ namespace ompl
 
         protected:
 
+            //void addSample(const VertexPtr &newSample) override;
+
+            //void addVertex(const VertexPtr &newVertex, const bool &removeFromFree) override; 
+
             void newBatch() override;
 
             void updateSamples() override;
 
             void updateNearestTerms() override;
+
+            unsigned int nearestSamples(const VertexPtr &vertex, std::vector<VertexPtr> *neighbourSamples);
+
+            unsigned int nearestVertices(const VertexPtr &vertex, std::vector<VertexPtr> *neighbourVertices);
 
         };
     } // namespace geometric

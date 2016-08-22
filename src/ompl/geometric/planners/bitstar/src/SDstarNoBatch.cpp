@@ -13,6 +13,7 @@ namespace ompl
         SDstarNoBatch::SDstarNoBatch(const ompl::base::SpaceInformationPtr &si, const std::string &name)
         : ompl::geometric::SDstarBase(si,name)
         {
+            setIsUsingStates(false);
         }
 
         SDstarNoBatch::~SDstarNoBatch() = default;
@@ -22,6 +23,12 @@ namespace ompl
             if(numBatches_ >= 1)
             {
                 return;
+            }
+
+            if(isUsingStates_)
+            {
+                intQueue_->setNearSamplesFunc(std::bind(&SDstarNoBatch::nearestSamples, this, std::placeholders::_1, std::placeholders::_2 ));
+                intQueue_->setNearVerticesFunc(std::bind(&SDstarNoBatch::nearestVertices, this, std::placeholders::_1, std::placeholders::_2 ));
             }
 
             ++numBatches_;
@@ -129,6 +136,78 @@ namespace ompl
                 }
             }
         }
+
+        unsigned int SDstarNoBatch::nearestVertices(const VertexPtr &vertex, std::vector<VertexPtr> *neighbourVertices)
+        {
+            ++numNearestNeighbours_;
+            
+            *neighbourVertices = vertexStates_;
+            return 0u;
+        }
+
+        unsigned int SDstarNoBatch::nearestSamples(const VertexPtr &vertex, std::vector<VertexPtr> *neighbourSamples)
+        {
+            std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
+            start = std::chrono::high_resolution_clock::now();
+            ++numNearestNeighbours_;
+            
+            *neighbourSamples = freeStates_;
+            end = std::chrono::high_resolution_clock::now();
+            nbrs_time += static_cast< std::chrono::duration<double> >(end-start);
+            return 0u;
+        }
+
+        /*
+        void SDstarNoBatch::addSample(const VertexPtr &newSample)
+        {
+            // Mark as new
+            newSample->markNew();
+
+            // Add to the list of new samples
+            newSamples_.push_back(newSample);
+
+            // Add to the NN structure:
+            freeStateNN_->add(newSample);
+
+            //Add to full set
+            freeStates_.push_back(newSample);
+        }
+
+        void SDstarNoBatch::addVertex(const VertexPtr &newVertex, const bool &removeFromFree)
+        {
+            // Make sure it's connected first, so that the queue gets updated properly. This is a day of debugging I'll
+            // never get back
+            if (newVertex->isInTree() == false)
+            {
+                throw ompl::Exception("Vertices must be connected to the graph before adding");
+            }
+
+            // Remove the vertex from the list of samples (if it even existed)
+            if (removeFromFree == true)
+            {
+                freeStateNN_->remove(newVertex);
+                for(std::vector<VertexPtr>::iterator it = freeStates_.begin(); it != freeStates_.end(); ++ it)
+                {
+                    if(*it == newVertex){
+                        freeStates_.erase(it);
+                        break;
+                    }
+                }
+            }
+            // No else
+
+            // Add to the NN structure:
+            vertexNN_->add(newVertex);
+
+            vertexStates_.push_back(newVertex);
+
+            // Add to the queue:
+            intQueue_->insertVertex(newVertex);
+
+            // Increment the number of vertices added:
+            ++numVertices_;
+        }
+        */
 
     }
 }

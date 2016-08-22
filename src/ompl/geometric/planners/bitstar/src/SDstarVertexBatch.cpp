@@ -65,7 +65,8 @@ namespace ompl
                 vertexNN_ -> list(vertsInTree);
                 for(auto &vert : vertsInTree)
                 {
-                    vert->markUnexpandedToVertices();
+                    if(vert -> isPruned() == false)
+                        vert->markUnexpandedToVertices();
                 }
             }
 

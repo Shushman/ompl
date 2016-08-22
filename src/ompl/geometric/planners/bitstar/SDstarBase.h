@@ -46,6 +46,8 @@
 #include <vector>
 // std::list
 #include <list>
+// std::chrono
+#include <chrono>
 
 // OMPL:
 // The base-class of planners:
@@ -303,7 +305,17 @@ namespace ompl
 
             bool getIsHaltonSeq() const;
 
+            void setIsUsingStates(bool isUsingStates);
+
+            bool getIsUsingStates() const;
+
+            bool getHasFullySearched() const;
+
             void initSampler(const std::vector<const ompl::base::State *> &states);
+
+            double getNbrsTime(bool average=false) const;
+
+            double getCollCheckTime(bool average=false) const;
 
             ///////////////////////////////////////
 
@@ -372,10 +384,10 @@ namespace ompl
             void updateGoalVertex();
 
             /** \brief Add a sample */
-            void addSample(const VertexPtr &newSample);
+            virtual void addSample(const VertexPtr &newSample);
 
             /** \brief Add a vertex to the graph */
-            void addVertex(const VertexPtr &newVertex, const bool &removeFromFree);
+            virtual void addVertex(const VertexPtr &newVertex, const bool &removeFromFree);
 
             /** \brief Get the nearest samples from the freeStateNN_ using the appropriate "near" definition (i.e., k or
              * r). If using k-nearest, returns the target k, otherwise returns 0u. */
@@ -591,6 +603,8 @@ namespace ompl
             /** \brief Retrieve the total number of edges processed from the queue as a planner-progress property.
              * (numEdgesProcessed_) */
             std::string edgesProcessedProgressProperty() const;
+
+
             ///////////////////////////////////////
 
             // Variables -- Make sure every one is configured in setup() and reset in clear():
@@ -691,9 +705,11 @@ namespace ompl
 
             bool isHaltonSeq_;
 
+            bool isUsingStates_;
 
 
-            //std::vector<const ompl::base::State *> &states_;
+            std::vector<VertexPtr> freeStates_;
+            std::vector<VertexPtr> vertexStates_;
 
             ///////////////////////////////////////
 
@@ -744,6 +760,13 @@ namespace ompl
             /** \brief The number of edges processed, in one way or other, from the queue. Accessible via
              * edgesProcessedProgressProperty */
             unsigned int numEdgesProcessed_;
+
+            //Timing data
+            std::chrono::duration<double> nbrs_time;
+            std::chrono::duration<double> collcheck_time;
+
+
+
             ///////////////////////////////////////
 
             ///////////////////////////////////////

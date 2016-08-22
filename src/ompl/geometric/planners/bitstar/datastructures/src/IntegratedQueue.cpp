@@ -108,6 +108,21 @@ namespace ompl
 
         void BITstar::IntegratedQueue::eraseVertex(const VertexPtr &oldVertex, bool disconnectParent,
                                                    const VertexPtrNNPtr &vertexNN, const VertexPtrNNPtr &freeStateNN,
+                                                   std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
+                                                   std::vector<VertexPtr> *recycledVertices)
+        {
+            // If requested, disconnect from parent, cascading cost updates:
+            if (disconnectParent == true)
+            {
+                this->disconnectParent(oldVertex, true);
+            }
+
+            // Remove it from vertex queue and lookup, and edge queues (as requested):
+            this->vertexRemoveHelper(oldVertex, vertexNN, freeStateNN, vertexStates, freeStates, recycledVertices, true);
+        }
+
+         void BITstar::IntegratedQueue::eraseVertex(const VertexPtr &oldVertex, bool disconnectParent,
+                                                   const VertexPtrNNPtr &vertexNN, const VertexPtrNNPtr &freeStateNN,
                                                    std::vector<VertexPtr> *recycledVertices)
         {
             // If requested, disconnect from parent, cascading cost updates:
@@ -417,6 +432,76 @@ namespace ompl
         std::pair<unsigned int, unsigned int> BITstar::IntegratedQueue::prune(const VertexPtr &pruneStartPtr,
                                                                               const VertexPtrNNPtr &vertexNN,
                                                                               const VertexPtrNNPtr &freeStateNN,
+                                                                              std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
+                                                                              std::vector<VertexPtr> *recycledVertices)
+        {
+            if (this->isSorted() == false)
+            {
+                throw ompl::Exception("Prune cannot be called on an unsorted queue.");
+            }
+            // The vertex expansion queue is sorted on an estimated solution cost considering the *current* cost-to-come
+            // of the vertices, while we prune by considering the best-case cost-to-come.
+            // This means that the value of the vertices in the queue are an upper-bounding estimate of the value we
+            // will use to prune them.
+            // Therefore, we can start our pruning at the goal vertex and iterate forward through the queue from there.
+
+            // Variables:
+            // The number of vertices and samples pruned:
+            std::pair<unsigned int, unsigned int> numPruned;
+            // The iterator into the lookup helper:
+            VertexIdToVertexQueueIterUMap::iterator lookupIter;
+            // The iterator into the queue:
+            VertexQueueIter queueIter;
+
+            // Initialize the counters:
+            numPruned = std::make_pair(0u, 0u);
+
+            // Get the iterator to the queue of the given starting point.
+            lookupIter = vertexIterLookup_.find(pruneStartPtr->getId());
+
+            // Check that it was found
+            if (lookupIter == vertexIterLookup_.end())
+            {
+                // Complain
+                throw ompl::Exception("The provided starting point is not in the queue?");
+            }
+
+            // Get the vertex queue iterator:
+            queueIter = lookupIter->second;
+
+            // Iterate through to the end of the queue
+            while (queueIter != vertexQueue_.end())
+            {
+                // Check if it should be pruned (value) or has lost its parent.
+                if (this->vertexPruneCondition(queueIter->second) == true)
+                {
+                    // The vertex should be pruned.
+                    // Variables
+                    // An iter to the vertex to prune:
+                    VertexQueueIter pruneIter;
+
+                    // Copy the iterator to prune:
+                    pruneIter = queueIter;
+
+                    // Move the queue iterator back one so we can step to the next *valid* vertex after pruning:
+                    --queueIter;
+
+                    // Prune the branch:
+                    numPruned = this->pruneBranch(pruneIter->second, vertexNN, freeStateNN, vertexStates, freeStates, recycledVertices);
+                }
+                // No else, skip this vertex.
+
+                // Iterate forward to the next value in the queue
+                ++queueIter;
+            }
+
+            // Return the number of vertices and samples pruned.
+            return numPruned;
+        }
+
+        std::pair<unsigned int, unsigned int> BITstar::IntegratedQueue::prune(const VertexPtr &pruneStartPtr,
+                                                                              const VertexPtrNNPtr &vertexNN,
+                                                                              const VertexPtrNNPtr &freeStateNN,
                                                                               std::vector<VertexPtr> *recycledVertices)
         {
             if (this->isSorted() == false)
@@ -480,6 +565,106 @@ namespace ompl
             }
 
             // Return the number of vertices and samples pruned.
+            return numPruned;
+        }
+
+
+
+        std::pair<unsigned int, unsigned int> BITstar::IntegratedQueue::resort(const VertexPtrNNPtr &vertexNN,
+                                                                               const VertexPtrNNPtr &freeStateNN,
+                                                                               std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
+                                                                               std::vector<VertexPtr> *recycledVertices)
+        {
+            // Variable:
+            using VertexIdToVertexPtrUMap = std::unordered_map<BITstar::VertexId, VertexPtr>;
+            using DepthToUMapMap = std::map<unsigned int, VertexIdToVertexPtrUMap>;
+            // The number of vertices and samples pruned, respectively:
+            std::pair<unsigned int, unsigned int> numPruned;
+
+            // Initialize the counters:
+            numPruned = std::make_pair(0u, 0u);
+
+            // Iterate through every vertex listed for resorting:
+            if (resortVertices_.empty() == false)
+            {
+                // Variable:
+                // The container ordered on vertex depth:
+                DepthToUMapMap uniqueResorts;
+
+                // Iterate over the vector and place into the unique queue indexed on *depth*. This guarantees that we
+                // won't process a branch multiple times by being given different vertices down its chain
+                for (auto &resortVertex : resortVertices_)
+                {
+                    // Add the vertex to the unordered map stored at the given depth.
+                    // The [] return an reference to the existing entry, or create a new entry:
+                    uniqueResorts[resortVertex->getDepth()].emplace(resortVertex->getId(), resortVertex);
+                }
+
+                // Clear the list of vertices to resort from:
+                resortVertices_.clear();
+
+                // Now process the vertices in order of depth.
+                for (auto &deepIter : uniqueResorts)
+                {
+                    for (auto &vIter : deepIter.second)
+                    {
+                        // Make sure it has not already been pruned:
+                        if (vIter.second->isPruned() == false)
+                        {
+                            // Make sure it has not already been returned to the set of samples:
+                            if (vIter.second->isInTree() == true)
+                            {
+                                // Are we pruning the vertex from the queue (and do we have "permission" to do so)?
+                                if (this->vertexPruneCondition(vIter.second) == true &&
+                                    static_cast<bool>(vertexNN) == true && static_cast<bool>(freeStateNN) == true)
+                                {
+                                    // The vertex should just be pruned and forgotten about.
+                                    // Prune the branch:
+                                    numPruned =
+                                        this->pruneBranch(vIter.second, vertexNN, freeStateNN, vertexStates, freeStates, recycledVertices);
+                                }
+                                else
+                                {
+                                    // The vertex is going to be kept.
+
+                                    // Does it have any children?
+                                    if (vIter.second->hasChildren() == true)
+                                    {
+                                        // Variables:
+                                        // The list of children:
+                                        std::vector<VertexPtr> resortChildren;
+
+                                        // Put its children in the list to be resorted:
+                                        // Get the list of children:
+                                        vIter.second->getChildren(&resortChildren);
+
+                                        // Get a reference to the container for the children, all children are 1 level
+                                        // deeper than their parent.:
+                                        // The [] return an reference to the existing entry, or create a new entry:
+                                        VertexIdToVertexPtrUMap &depthContainer =
+                                            uniqueResorts[vIter.second->getDepth() + 1u];
+
+                                        // Place the children into the container, as the container is a map, it will not
+                                        // allow the children to be entered twice.
+                                        for (auto &i : resortChildren)
+                                        {
+                                            depthContainer.emplace(i->getId(), i);
+                                        }
+                                    }
+
+                                    // Reinsert the vertex:
+                                    this->reinsertVertex(vIter.second);
+                                }
+                            }
+                            // No else, this vertex was a child of a vertex pruned during the resort. It has been
+                            // returned to the set of free samples.
+                        }
+                        // No else, this vertex was a child of a vertex pruned during the resort. It has been deleted.
+                    }
+                }
+            }
+
+            // Return the number of vertices pruned.
             return numPruned;
         }
 
@@ -853,6 +1038,11 @@ namespace ompl
         {
             nearSamplesFunc_ = nearSamplesFunc;
         }
+
+        void BITstar::IntegratedQueue::setNearVerticesFunc(NeighbourhoodFunc nearVerticesFunc)
+        {
+            nearVerticesFunc_ = nearVerticesFunc;
+        }
         /////////////////////////////////////////////////////////////////////////////////////////////
 
         /////////////////////////////////////////////////////////////////////////////////////////////
@@ -957,7 +1147,8 @@ namespace ompl
                     for (auto &neighbourSample : neighbourSamples)
                     {
                         // Attempt to queue the edge.
-                        this->queueupEdge(vertex, neighbourSample);
+                        //if (neighbourSample -> isInTree() == false)
+                            this->queueupEdge(vertex, neighbourSample);
                     }
 
                     // Mark it as expanded
@@ -1132,7 +1323,7 @@ namespace ompl
             }
 
             // Remove myself, not touching my lookup entries
-            this->vertexRemoveHelper(unorderedVertex, VertexPtrNNPtr(), VertexPtrNNPtr(), nullptr, false);
+            this->vertexRemoveHelper(unorderedVertex, VertexPtrNNPtr(), VertexPtrNNPtr(), nullptr, nullptr, nullptr, false);
 
             // Reinsert myself, expanding if I cross the token if I am not already expanded
             this->vertexInsertHelper(unorderedVertex, alreadyExpanded == false);
@@ -1172,6 +1363,59 @@ namespace ompl
                 }
             }
             // No else, no edges from this vertex to requeue
+        }
+
+        std::pair<unsigned int, unsigned int> BITstar::IntegratedQueue::pruneBranch(
+            const VertexPtr &branchBase, const VertexPtrNNPtr &vertexNN, const VertexPtrNNPtr &freeStateNN,
+            std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
+            std::vector<VertexPtr> *recycledVertices)
+        {
+            // We must iterate over the children of this vertex and prune each one.
+            // Then we must decide if this vertex (a) gets deleted or (b) placed back on the sample set.
+            //(a) occurs if it has a lower-bound heuristic greater than the current solution
+            //(b) occurs if it doesn't.
+
+            // Some asserts:
+            if (branchBase->isInTree() == false)
+            {
+                throw ompl::Exception("Trying to prune a disconnected vertex. Something went wrong.");
+            }
+
+            // Variables:
+            // The counter of vertices and samples pruned:
+            std::pair<unsigned int, unsigned int> numPruned;
+            // The vector of my children:
+            std::vector<VertexPtr> children;
+
+            // Initialize the counter:
+            numPruned = std::make_pair(1u, 0u);
+
+            // Disconnect myself from my parent, not cascading costs as I know my children are also being disconnected:
+            this->disconnectParent(branchBase, false);
+
+            // Get the vector of children
+            branchBase->getChildren(&children);
+
+            // Remove myself from everything:
+            numPruned.second = this->vertexRemoveHelper(branchBase, vertexNN, freeStateNN, vertexStates, freeStates, recycledVertices, true);
+
+            // Prune my children:
+            for (auto &i : children)
+            {
+                // Variable:
+                // The number pruned by my children:
+                std::pair<unsigned int, unsigned int> childNumPruned;
+
+                // Prune my children:
+                childNumPruned = this->pruneBranch(i, vertexNN, freeStateNN, vertexStates, freeStates, recycledVertices);
+
+                // Update my counter:
+                numPruned.first = numPruned.first + childNumPruned.first;
+                numPruned.second = numPruned.second + childNumPruned.second;
+            }
+
+            // Return the number pruned
+            return numPruned;
         }
 
         std::pair<unsigned int, unsigned int> BITstar::IntegratedQueue::pruneBranch(
@@ -1335,6 +1579,7 @@ namespace ompl
         unsigned int BITstar::IntegratedQueue::vertexRemoveHelper(const VertexPtr &oldVertex,
                                                                   const VertexPtrNNPtr &vertexNN,
                                                                   const VertexPtrNNPtr &freeStateNN,
+                                                                  std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
                                                                   std::vector<VertexPtr> *recycledVertices,
                                                                   bool removeLookups)
         {
@@ -1408,6 +1653,137 @@ namespace ompl
                         // Remove myself from the nearest neighbour structure:
                         vertexNN->remove(oldVertex);
 
+                        //EXPERIMENTAL
+                        for(std::vector<VertexPtr>::iterator it = vertexStates->begin(); it != vertexStates->end(); ++ it)
+                        {
+                            if(*it == oldVertex){
+                                vertexStates->erase(it);
+                                break;
+                            }
+                        }
+
+
+
+                        // Finally, mark as pruned. This is a lock that prevents accessing anything about the vertex.
+                        oldVertex->markPruned();
+                    }
+                    else
+                    {
+                        // No, the vertex is still useful as a sample:
+                        // Remove myself from the nearest neighbour structure:
+                        vertexNN->remove(oldVertex);
+
+                        for(std::vector<VertexPtr>::iterator it = vertexStates->begin(); it != vertexStates->end(); ++ it)
+                        {
+                            if(*it == oldVertex){
+                                vertexStates->erase(it);
+                                break;
+                            }
+                        }
+
+                        // Mark myself as a "new" sample. This assures that all possible incoming edges will be
+                        // considered
+                        oldVertex->markNew();
+
+                        // Add myself to the list of recycled vertices:
+                        recycledVertices->push_back(oldVertex);
+
+                        // And add the vertex to the set of samples, keeping the incoming edges:
+                        freeStateNN->add(oldVertex);
+
+                        freeStates->push_back(oldVertex);
+                    }
+                }
+                // Else, if I was given null pointers, that's because this sample is not allowed to change sets.
+            }
+            else
+            {
+                std::cout << std::endl
+                          << "vId: " << oldVertex->getId() << std::endl;
+                throw ompl::Exception("Removing a nonexistent vertex. Something went wrong.");
+            }
+
+            // Return if the sample was deleted:
+            return deleted;
+        }
+
+        unsigned int BITstar::IntegratedQueue::vertexRemoveHelper(const VertexPtr &oldVertex,
+                                                                  const VertexPtrNNPtr &vertexNN,
+                                                                  const VertexPtrNNPtr &freeStateNN,
+                                                                  std::vector<VertexPtr> *recycledVertices,
+                                                                  bool removeLookups)
+        {
+            // Variable
+            // The number of samples deleted (i.e., if this vertex is NOT moved to a sample, this is a 1)
+            unsigned int deleted;
+
+            // Check that the vertex is not connected to a parent:
+            if (oldVertex->hasParent() == true && removeLookups == true)
+            {
+                throw ompl::Exception("Cannot delete a vertex connected to a parent unless the vertex is being "
+                                      "immediately reinserted, in which case removeLookups should be false.");
+            }
+
+            // Start undeleted:
+            deleted = 0u;
+
+            // Check if there's anything to delete:
+            if (vertexQueue_.empty() == false)
+            {
+                // Variable
+                // The iterator into the lookup:
+                VertexIdToVertexQueueIterUMap::iterator lookupIter;
+
+                // Get my lookup iter:
+                lookupIter = vertexIterLookup_.find(oldVertex->getId());
+
+                // Assert
+                if (lookupIter == vertexIterLookup_.end())
+                {
+                    std::cout << std::endl
+                              << "vId: " << oldVertex->getId() << std::endl;
+                    throw ompl::Exception("Deleted vertex is not found in lookup. Something went wrong.");
+                }
+
+                // Check if we need to move the expansion token:
+                if (lookupIter->second == vertexToExpand_)
+                {
+                    // It is the token, move it to the next:
+                    ++vertexToExpand_;
+                }
+                // No else, not the token.
+
+                // Remove myself from the vertex queue:
+                vertexQueue_.erase(lookupIter->second);
+
+                // Remove from lookups map as requested
+                if (removeLookups == true)
+                {
+                    vertexIterLookup_.erase(lookupIter);
+                    this->removeEdgesFrom(oldVertex);
+                }
+
+                // Check if I have been given permission to change sets:
+                if (static_cast<bool>(vertexNN) == true && static_cast<bool>(freeStateNN) == true &&
+                    static_cast<bool>(recycledVertices) == true)
+                {
+                    // Check if I should be discarded completely:
+                    if (this->samplePruneCondition(oldVertex) == true)
+                    {
+                        // Yes, the vertex isn't even useful as a sample
+                        // Update the counter:
+                        deleted = 1u;
+
+                        // Remove from the incoming edge container if requested:
+                        if (removeLookups == true)
+                        {
+                            this->removeEdgesTo(oldVertex);
+                        }
+
+                        // Remove myself from the nearest neighbour structure:
+                        vertexNN->remove(oldVertex);
+
+
                         // Finally, mark as pruned. This is a lock that prevents accessing anything about the vertex.
                         oldVertex->markPruned();
                     }
@@ -1426,6 +1802,7 @@ namespace ompl
 
                         // And add the vertex to the set of samples, keeping the incoming edges:
                         freeStateNN->add(oldVertex);
+
                     }
                 }
                 // Else, if I was given null pointers, that's because this sample is not allowed to change sets.
