@@ -1145,7 +1145,7 @@ namespace ompl
                 {
                     // It has not, that means none of its outgoing edges have been considered. Add them all
                     for (auto &neighbourSample : neighbourSamples)
-                    {
+                    {   
                         // Attempt to queue the edge.
                         //if (neighbourSample -> isInTree() == false)
                             this->queueupEdge(vertex, neighbourSample);
@@ -1159,7 +1159,8 @@ namespace ompl
                     // It has, which means that outgoing edges to old unconnected vertices have already been considered.
                     // Only add those that lead to new vertices
                     for (auto &neighbourSample : neighbourSamples)
-                    {
+                    {   
+                        
                         // Is the target new?
                         if (neighbourSample->isNew() == true)
                         {
@@ -1187,6 +1188,8 @@ namespace ompl
                     // solution:
                     for (auto &neighbourVertice : neighbourVertices)
                     {
+                        if(vertex->getId() == 0 && neighbourVertice -> getId() == 2106)
+                            std::cout<<"0 <--> 2106 in C!"<<std::endl;
                         // Make sure it is not the root or myself.
                         if (neighbourVertice->isRoot() == false && neighbourVertice != vertex)
                         {

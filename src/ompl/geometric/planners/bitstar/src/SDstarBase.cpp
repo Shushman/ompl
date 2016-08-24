@@ -775,15 +775,6 @@ namespace ompl
             // Is the edge queue empty
             if (intQueue_->isEmpty() == true)
             {
-                bool dyn_cond = (useKNearest_ && k_ > k_max_dynamic)
-                            ||  (!useKNearest_ && r_ >= r_max_dynamic);
-
-                if(dyn_cond && sampler_ -> areStatesExhausted() == true)
-                {
-                    hasFullySearched_ = true;
-                    return;
-                }
-
                 // Is it also unsorted?
                 if (intQueue_->isSorted() == false)
                 {
@@ -795,6 +786,15 @@ namespace ompl
                 {
                     // If not, then we're either just starting the problem, or just finished a batch. Either way, make a
                     // batch of samples and/or edges and fill the queue for the first time:
+                    bool dyn_cond = (useKNearest_ && k_ >= k_max_dynamic)
+                            ||  (!useKNearest_ && r_ >= r_max_dynamic);
+
+                    if(dyn_cond && sampler_ -> areStatesExhausted() == true)
+                    {
+                        hasFullySearched_ = true;
+                        return;
+                    }  
+
                     this->newBatch();
                     hasFullySearched_ = false;
                 }
@@ -1068,7 +1068,11 @@ namespace ompl
             if(hasSolution_)
               k_max_dynamic = freeStateNN_->size() + vertexNN_->size() - 1;
 
+            OMPL_INFORM("DONE PRUNING!");
+
             return vertexPruned;
+
+
         }
 
         bool SDstarBase::resort()
@@ -1157,6 +1161,7 @@ namespace ompl
             for (VertexConstPtr curVertex = curGoalVertex_; curVertex->isRoot() == false;
                  curVertex = curVertex->getParentConst())
             {
+                std::cout<<curVertex->getId()<<" <- ";
                 // Check the case where the chain ends incorrectly. This is unnecessary but sure helpful in debugging:
                 if (curVertex->hasParent() == false)
                 {
@@ -1167,6 +1172,8 @@ namespace ompl
                 // Push back the parent into the vector as a state pointer:
                 reversePath.push_back(curVertex->getParentConst()->stateConst());
             }
+
+            std::cout<<std::endl;
             return reversePath;
         }
 
@@ -1696,7 +1703,8 @@ namespace ompl
                 bestCost_ = newCost;
 
                 //Update r_max_dynamic too
-                r_max_dynamic = bestCost_.value();
+                r_max_dynamic = std::min(bestCost_.value(),Planner::si_->getStateSpace()->getMaximumExtent());
+                //r_max_dynamic = Planner::si_->getStateSpace()->getMaximumExtent();
 
                 // and best length
                 bestLength_ = curGoalVertex_->getDepth() + 1u;

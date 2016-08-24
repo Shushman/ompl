@@ -65,8 +65,10 @@ namespace ompl
                 vertexNN_ -> list(vertsInTree);
                 for(auto &vert : vertsInTree)
                 {
-                    if(vert -> isPruned() == false)
+                    if(vert -> isPruned() == false){
                         vert->markUnexpandedToVertices();
+                        vert->markUnexpandedToSamples();
+                    }
                 }
             }
 
@@ -128,7 +130,7 @@ namespace ompl
                 }
                 
                 if(sampler_ -> areStatesExhausted())
-                    OMPL_INFORM("SDstarNoBatch : All states exhausted and %d samples!",numSamples_);
+                    OMPL_INFORM("SDstarVertexBatch : All states exhausted and %d samples!",numSamples_);
                 costSampled_ = costReqd;
             }
         }

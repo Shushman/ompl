@@ -33,10 +33,12 @@ namespace ompl
         void SDstarEdgeBatch::newBatch()
         {
             OMPL_INFORM("New Batch called!");
+
             /*if(numBatches_ == 1){
                 //std::function<unsigned int(const VertexPtr &, std::vector<VertexPtr> *)> funcptr = nearestNewRadVertices;
                 intQueue_->setNearSamplesFunc(std::bind(&SDstarEdgeBatch::nearestNewRadVertices, this, std::placeholders::_1, std::placeholders::_2 ));
             }*/
+
             ++numBatches_;
 
             intQueue_->reset();
@@ -47,21 +49,21 @@ namespace ompl
                 this->updateStartAndGoalStates(ompl::base::plannerAlwaysTerminatingCondition());
             }
 
+            //this->prune();
 
-            this->prune();
-
-            
             if(numBatches_ > 1)
             {
                 std::vector<VertexPtr> vertsInTree;
                 vertexNN_ -> list(vertsInTree);
                 for(auto &vert : vertsInTree)
                 {   
-                    if(vert -> isPruned() == false)
+                    if(vert -> isPruned() == false){
                         vert->markUnexpandedToVertices();
+                        vert->markUnexpandedToSamples();
+                    }
                 }
             }
-            
+
             costSampled_ = minCost_;
 
             this -> updateNearestTerms();
@@ -123,7 +125,7 @@ namespace ompl
                     }
                 }
             
-                OMPL_INFORM("SDstarNoBatch : All states exhausted and %d samples!",numSamples_);
+                OMPL_INFORM("SDstarEdgeBatch : All states exhausted and %d samples!",numSamples_);
                 costSampled_ = costReqd;
             }
         }
@@ -137,7 +139,7 @@ namespace ompl
             if (N == 0u)
             {
                 k_ = startVertices_.size() + goalVertices_.size();
-                r_ = std::numeric_limits<double>::infinity();
+                r_ = std::numeric_limits<double>::infinity();;
                 prevRadius_ = 0.0;
             }
             else
@@ -207,7 +209,6 @@ namespace ompl
                 return 0u;
             }
         }
-
 
 
     } // namespace geometric

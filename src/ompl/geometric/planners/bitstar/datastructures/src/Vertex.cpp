@@ -423,7 +423,7 @@ namespace ompl
 
         void BITstar::Vertex::markPruned()
         {
-            this->assertNotPruned();
+            //this->assertNotPruned();
 
             isPruned_ = true;
         }
