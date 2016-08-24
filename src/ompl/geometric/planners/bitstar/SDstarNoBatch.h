@@ -39,9 +39,9 @@ namespace ompl
 
         protected:
 
-            //void addSample(const VertexPtr &newSample) override;
+            void addSample(const VertexPtr &newSample) override;
 
-            //void addVertex(const VertexPtr &newVertex, const bool &removeFromFree) override; 
+            void addVertex(const VertexPtr &newVertex, const bool &removeFromFree) override; 
 
             void newBatch() override;
 

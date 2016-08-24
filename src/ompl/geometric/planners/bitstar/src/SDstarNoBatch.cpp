@@ -13,7 +13,7 @@ namespace ompl
         SDstarNoBatch::SDstarNoBatch(const ompl::base::SpaceInformationPtr &si, const std::string &name)
         : ompl::geometric::SDstarBase(si,name)
         {
-            setIsUsingStates(false);
+            setIsUsingStates(true);
         }
 
         SDstarNoBatch::~SDstarNoBatch() = default;
@@ -157,7 +157,7 @@ namespace ompl
             return 0u;
         }
 
-        /*
+        
         void SDstarNoBatch::addSample(const VertexPtr &newSample)
         {
             // Mark as new
@@ -166,8 +166,6 @@ namespace ompl
             // Add to the list of new samples
             newSamples_.push_back(newSample);
 
-            // Add to the NN structure:
-            freeStateNN_->add(newSample);
 
             //Add to full set
             freeStates_.push_back(newSample);
@@ -185,7 +183,6 @@ namespace ompl
             // Remove the vertex from the list of samples (if it even existed)
             if (removeFromFree == true)
             {
-                freeStateNN_->remove(newVertex);
                 for(std::vector<VertexPtr>::iterator it = freeStates_.begin(); it != freeStates_.end(); ++ it)
                 {
                     if(*it == newVertex){
@@ -196,9 +193,6 @@ namespace ompl
             }
             // No else
 
-            // Add to the NN structure:
-            vertexNN_->add(newVertex);
-
             vertexStates_.push_back(newVertex);
 
             // Add to the queue:
@@ -207,7 +201,7 @@ namespace ompl
             // Increment the number of vertices added:
             ++numVertices_;
         }
-        */
+        
 
     }
 }

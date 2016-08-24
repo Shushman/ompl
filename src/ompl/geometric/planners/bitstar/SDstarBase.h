@@ -46,6 +46,8 @@
 #include <vector>
 // std::list
 #include <list>
+//std::unordered_map
+#include <unordered_map>
 // std::chrono
 #include <chrono>
 
@@ -153,6 +155,8 @@ namespace ompl
             typedef std::pair<VertexConstPtr, VertexConstPtr> VertexConstPtrPair;
             /** \brief The OMPL::NearestNeighbors structure. */
             typedef std::shared_ptr<NearestNeighbors<VertexPtr>> VertexPtrNNPtr;
+
+            typedef std::pair<VertexId, VertexId> VertexIdPair;
 
             //For sampler
             typedef std::shared_ptr<ompl::base::RejectionInfPrecomputedSampler> RejectionInfPrecomputedSamplerPtr;
@@ -366,7 +370,7 @@ namespace ompl
 
             /** \brief Checks an edge for collision. A wrapper to SpaceInformation->checkMotion that tracks number of
              * collision checks. */
-            bool checkEdge(const VertexConstPtrPair &edge);
+            virtual bool checkEdge(const VertexConstPtrPair &edge);
 
             /** \brief Actually remove a sample from its NN struct.*/
             void dropSample(const VertexPtr &oldSample);
@@ -628,6 +632,9 @@ namespace ompl
 
             /** \brief Any goal states of the problem that have been pruned */
             std::list<VertexPtr> prunedGoalVertices_;
+
+            //Keep track of checked edges
+            std::map<VertexIdPair,bool> edgeCheckStatus;
 
             /** \brief The goal vertex of the current best solution */
             VertexPtr curGoalVertex_;

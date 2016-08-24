@@ -50,6 +50,8 @@ namespace ompl
 
             void updateNearestTerms() override;
 
+            bool checkEdge(const VertexConstPtrPair &edge) override;
+
             unsigned int initVertexSize_;
 
             unsigned int nextVertexTarget_;

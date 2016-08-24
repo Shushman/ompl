@@ -149,8 +149,7 @@ namespace ompl
 
             /** \brief Erase a vertex from the vertex expansion queue. Will disconnect the vertex from its parent and
              * remove the associated incoming and outgoing edges from the edge queue as requested.*/
-            void eraseVertex(const VertexPtr &oldVertex, bool disconnectParent, const VertexPtrNNPtr &vertexNN,
-                             const VertexPtrNNPtr &freeStateNN, std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates, std::vector<VertexPtr> *recycledVertices);
+            void eraseVertex(const VertexPtr &oldVertex, bool disconnectParent, std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates, std::vector<VertexPtr> *recycledVertices);
             
             void eraseVertex(const VertexPtr &oldVertex, bool disconnectParent, const VertexPtrNNPtr &vertexNN,
                              const VertexPtrNNPtr &freeStateNN, std::vector<VertexPtr> *recycledVertices);
@@ -207,8 +206,7 @@ namespace ompl
              * threshold. Descendents of pruned vertices that are not pruned themselves are returned to the set of free
              * states. Returns the number of vertices pruned (either removed completely or moved to the set of free
              * states). */
-            std::pair<unsigned int, unsigned int> prune(const VertexPtr &pruneStartPtr, const VertexPtrNNPtr &vertexNN,
-                                                        const VertexPtrNNPtr &freeStateNN, std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
+            std::pair<unsigned int, unsigned int> prune(const VertexPtr &pruneStartPtr, std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
                                                         std::vector<VertexPtr> *recycledVertices);
 
             std::pair<unsigned int, unsigned int> prune(const VertexPtr &pruneStartPtr, const VertexPtrNNPtr &vertexNN,
@@ -219,9 +217,7 @@ namespace ompl
              * threshold. Descendents of pruned vertices that are not pruned themselves are returned to the set of free
              * states. Requires first marking the queue as unsorted. Returns the number of vertices pruned (either
              * removed completely or moved to the set of free states). */
-            std::pair<unsigned int, unsigned int> resort(const VertexPtrNNPtr &vertexNN,
-                                                         const VertexPtrNNPtr &freeStateNN,
-                                                         std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
+            std::pair<unsigned int, unsigned int> resort(std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
                                                          std::vector<VertexPtr> *recycledVertices);
 
             std::pair<unsigned int, unsigned int> resort(const VertexPtrNNPtr &vertexNN,
@@ -362,8 +358,6 @@ namespace ompl
             /** \brief Prune a branch of the graph. Returns the number of vertices removed, and the number of said
              * vertices that are completely thrown away (i.e., are not even useful as a sample) */
             std::pair<unsigned int, unsigned int> pruneBranch(const VertexPtr &branchBase,
-                                                              const VertexPtrNNPtr &vertexNN,
-                                                              const VertexPtrNNPtr &freeStateNN,
                                                               std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
                                                               std::vector<VertexPtr> *recycledVertices);
 
@@ -384,8 +378,7 @@ namespace ompl
              * number of vertices that are completely deleted. */
             // This is *NOT* by const-reference so that the oldVertex pointer doesn't go out of scope on me... which was
             // happening if it was being called with an iter->second where the iter gets deleted in this function...
-            unsigned int vertexRemoveHelper(const VertexPtr &oldVertex, const VertexPtrNNPtr &vertexNN,
-                                            const VertexPtrNNPtr &freeStateNN, std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates, std::vector<VertexPtr> *recycledVertices,
+            unsigned int vertexRemoveHelper(const VertexPtr &oldVertex, std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates, std::vector<VertexPtr> *recycledVertices,
                                             bool removeLookups);
 
             unsigned int vertexRemoveHelper(const VertexPtr &oldVertex, const VertexPtrNNPtr &vertexNN,

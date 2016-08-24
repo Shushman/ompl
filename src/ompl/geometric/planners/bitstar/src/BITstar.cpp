@@ -1045,7 +1045,7 @@ namespace ompl
             else
             {
                 // We are not, give it empty NN structs
-                numPruned = intQueue_->resort(VertexPtrNNPtr(), VertexPtrNNPtr(), nullptr, nullptr, nullptr);
+                numPruned = intQueue_->resort(VertexPtrNNPtr(), VertexPtrNNPtr(), nullptr);
             }
 
             // The number of vertices and samples pruned are incrementally updated.

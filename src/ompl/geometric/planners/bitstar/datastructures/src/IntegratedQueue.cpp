@@ -107,7 +107,6 @@ namespace ompl
         }
 
         void BITstar::IntegratedQueue::eraseVertex(const VertexPtr &oldVertex, bool disconnectParent,
-                                                   const VertexPtrNNPtr &vertexNN, const VertexPtrNNPtr &freeStateNN,
                                                    std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
                                                    std::vector<VertexPtr> *recycledVertices)
         {
@@ -118,7 +117,7 @@ namespace ompl
             }
 
             // Remove it from vertex queue and lookup, and edge queues (as requested):
-            this->vertexRemoveHelper(oldVertex, vertexNN, freeStateNN, vertexStates, freeStates, recycledVertices, true);
+            this->vertexRemoveHelper(oldVertex, vertexStates, freeStates, recycledVertices, true);
         }
 
          void BITstar::IntegratedQueue::eraseVertex(const VertexPtr &oldVertex, bool disconnectParent,
@@ -430,8 +429,6 @@ namespace ompl
         }
 
         std::pair<unsigned int, unsigned int> BITstar::IntegratedQueue::prune(const VertexPtr &pruneStartPtr,
-                                                                              const VertexPtrNNPtr &vertexNN,
-                                                                              const VertexPtrNNPtr &freeStateNN,
                                                                               std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
                                                                               std::vector<VertexPtr> *recycledVertices)
         {
@@ -487,7 +484,7 @@ namespace ompl
                     --queueIter;
 
                     // Prune the branch:
-                    numPruned = this->pruneBranch(pruneIter->second, vertexNN, freeStateNN, vertexStates, freeStates, recycledVertices);
+                    numPruned = this->pruneBranch(pruneIter->second, vertexStates, freeStates, recycledVertices);
                 }
                 // No else, skip this vertex.
 
@@ -570,9 +567,7 @@ namespace ompl
 
 
 
-        std::pair<unsigned int, unsigned int> BITstar::IntegratedQueue::resort(const VertexPtrNNPtr &vertexNN,
-                                                                               const VertexPtrNNPtr &freeStateNN,
-                                                                               std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
+        std::pair<unsigned int, unsigned int> BITstar::IntegratedQueue::resort(std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
                                                                                std::vector<VertexPtr> *recycledVertices)
         {
             // Variable:
@@ -615,13 +610,12 @@ namespace ompl
                             if (vIter.second->isInTree() == true)
                             {
                                 // Are we pruning the vertex from the queue (and do we have "permission" to do so)?
-                                if (this->vertexPruneCondition(vIter.second) == true &&
-                                    static_cast<bool>(vertexNN) == true && static_cast<bool>(freeStateNN) == true)
+                                if (this->vertexPruneCondition(vIter.second) == true)
                                 {
                                     // The vertex should just be pruned and forgotten about.
                                     // Prune the branch:
                                     numPruned =
-                                        this->pruneBranch(vIter.second, vertexNN, freeStateNN, vertexStates, freeStates, recycledVertices);
+                                        this->pruneBranch(vIter.second, vertexStates, freeStates, recycledVertices);
                                 }
                                 else
                                 {
@@ -1326,7 +1320,7 @@ namespace ompl
             }
 
             // Remove myself, not touching my lookup entries
-            this->vertexRemoveHelper(unorderedVertex, VertexPtrNNPtr(), VertexPtrNNPtr(), nullptr, nullptr, nullptr, false);
+            this->vertexRemoveHelper(unorderedVertex, nullptr, nullptr, nullptr, false);
 
             // Reinsert myself, expanding if I cross the token if I am not already expanded
             this->vertexInsertHelper(unorderedVertex, alreadyExpanded == false);
@@ -1369,7 +1363,7 @@ namespace ompl
         }
 
         std::pair<unsigned int, unsigned int> BITstar::IntegratedQueue::pruneBranch(
-            const VertexPtr &branchBase, const VertexPtrNNPtr &vertexNN, const VertexPtrNNPtr &freeStateNN,
+            const VertexPtr &branchBase,
             std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
             std::vector<VertexPtr> *recycledVertices)
         {
@@ -1400,7 +1394,7 @@ namespace ompl
             branchBase->getChildren(&children);
 
             // Remove myself from everything:
-            numPruned.second = this->vertexRemoveHelper(branchBase, vertexNN, freeStateNN, vertexStates, freeStates, recycledVertices, true);
+            numPruned.second = this->vertexRemoveHelper(branchBase, vertexStates, freeStates, recycledVertices, true);
 
             // Prune my children:
             for (auto &i : children)
@@ -1410,7 +1404,7 @@ namespace ompl
                 std::pair<unsigned int, unsigned int> childNumPruned;
 
                 // Prune my children:
-                childNumPruned = this->pruneBranch(i, vertexNN, freeStateNN, vertexStates, freeStates, recycledVertices);
+                childNumPruned = this->pruneBranch(i, vertexStates, freeStates, recycledVertices);
 
                 // Update my counter:
                 numPruned.first = numPruned.first + childNumPruned.first;
@@ -1580,8 +1574,6 @@ namespace ompl
         }
 
         unsigned int BITstar::IntegratedQueue::vertexRemoveHelper(const VertexPtr &oldVertex,
-                                                                  const VertexPtrNNPtr &vertexNN,
-                                                                  const VertexPtrNNPtr &freeStateNN,
                                                                   std::vector<VertexPtr> *vertexStates, std::vector<VertexPtr> *freeStates,
                                                                   std::vector<VertexPtr> *recycledVertices,
                                                                   bool removeLookups)
@@ -1637,8 +1629,7 @@ namespace ompl
                 }
 
                 // Check if I have been given permission to change sets:
-                if (static_cast<bool>(vertexNN) == true && static_cast<bool>(freeStateNN) == true &&
-                    static_cast<bool>(recycledVertices) == true)
+                if (static_cast<bool>(recycledVertices) == true)
                 {
                     // Check if I should be discarded completely:
                     if (this->samplePruneCondition(oldVertex) == true)
@@ -1654,7 +1645,6 @@ namespace ompl
                         }
 
                         // Remove myself from the nearest neighbour structure:
-                        vertexNN->remove(oldVertex);
 
                         //EXPERIMENTAL
                         for(std::vector<VertexPtr>::iterator it = vertexStates->begin(); it != vertexStates->end(); ++ it)
@@ -1674,7 +1664,6 @@ namespace ompl
                     {
                         // No, the vertex is still useful as a sample:
                         // Remove myself from the nearest neighbour structure:
-                        vertexNN->remove(oldVertex);
 
                         for(std::vector<VertexPtr>::iterator it = vertexStates->begin(); it != vertexStates->end(); ++ it)
                         {
@@ -1690,9 +1679,6 @@ namespace ompl
 
                         // Add myself to the list of recycled vertices:
                         recycledVertices->push_back(oldVertex);
-
-                        // And add the vertex to the set of samples, keeping the incoming edges:
-                        freeStateNN->add(oldVertex);
 
                         freeStates->push_back(oldVertex);
                     }

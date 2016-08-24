@@ -1036,15 +1036,17 @@ namespace ompl
 
                     // First, prune the starts/goals:
                     this->pruneStartsGoals();
+                    OMPL_INFORM("DONE PRUNING StartGoals!");
 
                     // Prune the samples
                     this->pruneSamples();
+                    OMPL_INFORM("DONE PRUNING Samples!");
 
                     // Prune the graph. This can be done extra efficiently by using some info in the integrated queue.
                     // This requires access to the nearest neighbour structures so vertices can be moved to free
                     // states.s
                     if(isUsingStates_)
-                        numPruned = intQueue_->prune(curGoalVertex_, vertexNN_, freeStateNN_, &vertexStates_, &freeStates_, &recycledSamples_);
+                        numPruned = intQueue_->prune(curGoalVertex_, &vertexStates_, &freeStates_, &recycledSamples_);
                       else
                         numPruned = intQueue_->prune(curGoalVertex_, vertexNN_, freeStateNN_, &recycledSamples_);
 
@@ -1089,14 +1091,14 @@ namespace ompl
                 // of resorted.
                 // The number of vertices pruned is also incrementally updated.
                 if(isUsingStates_)
-                    numPruned = intQueue_->resort(vertexNN_, freeStateNN_, &vertexStates_, &freeStates_, &recycledSamples_);
+                    numPruned = intQueue_->resort( &vertexStates_, &freeStates_, &recycledSamples_);
                 else
                     numPruned = intQueue_->resort(vertexNN_, freeStateNN_, &recycledSamples_);
             }
             else
             {
                 // We are not, give it empty NN structs
-                numPruned = intQueue_->resort(VertexPtrNNPtr(), VertexPtrNNPtr(), nullptr, nullptr, nullptr);
+                numPruned = intQueue_->resort(nullptr, nullptr, nullptr);
             }
 
             // The number of vertices and samples pruned are incrementally updated.
@@ -1161,7 +1163,7 @@ namespace ompl
             for (VertexConstPtr curVertex = curGoalVertex_; curVertex->isRoot() == false;
                  curVertex = curVertex->getParentConst())
             {
-                std::cout<<curVertex->getId()<<" <- ";
+                //std::cout<<curVertex->getId()<<" <- ";
                 // Check the case where the chain ends incorrectly. This is unnecessary but sure helpful in debugging:
                 if (curVertex->hasParent() == false)
                 {
@@ -1173,7 +1175,7 @@ namespace ompl
                 reversePath.push_back(curVertex->getParentConst()->stateConst());
             }
 
-            std::cout<<std::endl;
+            //std::cout<<std::endl;
             return reversePath;
         }
 
@@ -1407,7 +1409,7 @@ namespace ompl
 
                         // Remove the start vertex completely from the queue, they don't have parents
                         if(isUsingStates_)
-                            intQueue_->eraseVertex(*startIter, false, vertexNN_, freeStateNN_, &vertexStates_, &freeStates_, &recycledSamples_);
+                            intQueue_->eraseVertex(*startIter, false, &vertexStates_, &freeStates_, &recycledSamples_);
                         else
                             intQueue_->eraseVertex(*startIter, false, vertexNN_, freeStateNN_, &recycledSamples_);
 
@@ -1451,7 +1453,7 @@ namespace ompl
 
                             // And erase it from the queue:
                             if(isUsingStates_)
-                                intQueue_->eraseVertex(*goalIter, (*goalIter)->hasParent(), vertexNN_, freeStateNN_,
+                                intQueue_->eraseVertex(*goalIter, (*goalIter)->hasParent(),
                                                    &vertexStates_, &freeStates_,&recycledSamples_);
                             else
                               intQueue_->eraseVertex(*goalIter, (*goalIter)->hasParent(), vertexNN_, freeStateNN_,
@@ -1527,6 +1529,7 @@ namespace ompl
             bool res = Planner::si_->checkMotion(edge.first->stateConst(), edge.second->stateConst());
             end = std::chrono::high_resolution_clock::now();
             collcheck_time += static_cast< std::chrono::duration<double> >(end-start);
+          
             return res;
         }
 

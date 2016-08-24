@@ -160,10 +160,35 @@ namespace ompl
                 k_ = nextVertexTarget_;
                 r_ = std::numeric_limits<double>::infinity();
 
-                //if(nextVertexTarget_ == 0u)
-                  //  throw ompl::Exception("initVertices or vertexInflation not set");
             }
 
+        }
+
+        bool SDstarVertexBatch::checkEdge(const VertexConstPtrPair &edge)
+        {
+            ++numEdgeCollisionChecks_;
+            VertexIdPair fwdpair = std::make_pair(edge.first->getId(), edge.second->getId());
+            VertexIdPair backpair = std::make_pair(edge.second->getId(), edge.first->getId());
+            bool res = false;
+            if(edgeCheckStatus.find(fwdpair) != edgeCheckStatus.end())
+            {
+                res = edgeCheckStatus[fwdpair];
+            }
+            else if(edgeCheckStatus.find(backpair) != edgeCheckStatus.end())
+            {
+                res = edgeCheckStatus[backpair];
+            }
+            else
+            {
+                std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
+                start = std::chrono::high_resolution_clock::now();
+                res = Planner::si_->checkMotion(edge.first->stateConst(), edge.second->stateConst());
+                end = std::chrono::high_resolution_clock::now();
+                collcheck_time += static_cast< std::chrono::duration<double> >(end-start);
+                edgeCheckStatus.insert(std::make_pair(std::make_pair(edge.first->getId(), edge.second->getId()),res));
+            }
+            
+            return res;
         }
 
 

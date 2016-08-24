@@ -48,6 +48,8 @@ namespace ompl
 
             void updateNearestTerms() override;
 
+            bool checkEdge(const VertexConstPtrPair &edge) override;
+
             unsigned int nearestNewRadVertices(const VertexPtr &vertex, std::vector<VertexPtr> *neighbourVertices);
 
             double radInflFactor_;
