@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <functional>
+#include <thread>
 #include "ompl/geometric/planners/bitstar/SDstarEdgeBatch.h"
 #include "ompl/util/Console.h"
 #include "ompl/util/Exception.h"
@@ -33,11 +34,6 @@ namespace ompl
         void SDstarEdgeBatch::newBatch()
         {
             OMPL_INFORM("New Batch called!");
-
-            /*if(numBatches_ == 1){
-                //std::function<unsigned int(const VertexPtr &, std::vector<VertexPtr> *)> funcptr = nearestNewRadVertices;
-                intQueue_->setNearSamplesFunc(std::bind(&SDstarEdgeBatch::nearestNewRadVertices, this, std::placeholders::_1, std::placeholders::_2 ));
-            }*/
 
             ++numBatches_;
 
@@ -166,7 +162,8 @@ namespace ompl
                     {
                         prevRadius_ = 0.0;
                         if(this->getIsHaltonSeq())
-                            r_ = this->calculateRHalton(N) * 4.0;
+                            //From Janson-Pavone paper
+                            r_ = this->calculateRHalton(N)*2.5;
                         else
                             r_ = this->calculateR(N);
                     }
@@ -178,7 +175,7 @@ namespace ompl
                 OMPL_INFORM("Current Radius is %f",r_);
         }
 
-        unsigned int SDstarEdgeBatch::nearestNewRadVertices(const VertexPtr &vertex, std::vector<VertexPtr> *neighbourVertices)
+        /*unsigned int SDstarEdgeBatch::nearestNewRadVertices(const VertexPtr &vertex, std::vector<VertexPtr> *neighbourVertices)
         {
             ++numNearestNeighbours_;
 
@@ -208,7 +205,7 @@ namespace ompl
                 }
                 return 0u;
             }
-        }
+        }*/
 
         bool SDstarEdgeBatch::checkEdge(const VertexConstPtrPair &edge)
         {
@@ -228,6 +225,8 @@ namespace ompl
             {
                 std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
                 start = std::chrono::high_resolution_clock::now();
+                double dist = Planner::si_->distance(edge.first->stateConst(), edge.second->stateConst());
+                std::this_thread::sleep_for(std::chrono::duration<double>(0.00001*dist));
                 res = Planner::si_->checkMotion(edge.first->stateConst(), edge.second->stateConst());
                 end = std::chrono::high_resolution_clock::now();
                 collcheck_time += static_cast< std::chrono::duration<double> >(end-start);

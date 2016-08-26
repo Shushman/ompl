@@ -61,7 +61,10 @@
 // For the default optimization objective:
 #include "ompl/base/objectives/PathLengthOptimizationObjective.h"
 
+#include <ompl/base/spaces/RealVectorStateSpace.h>
+
 #include <chrono>
+#include <thread>
 
 namespace ompl
 {
@@ -1127,6 +1130,10 @@ namespace ompl
                  sIter != reversePath.rend(); ++sIter)
             {
                 pathGeoPtr->append(*sIter);
+                double *values = (*sIter) -> as<ompl::base::RealVectorStateSpace::StateType>()->values;
+                for (unsigned int i=0; i < Planner::si_->getStateDimension();i++)
+                  std::cout<<values[i]<<",";
+                std::cout<<"\n";
             }
 
             // Now create the solution
@@ -1526,6 +1533,8 @@ namespace ompl
             ++numEdgeCollisionChecks_;
             std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
             start = std::chrono::high_resolution_clock::now();
+            double dist = Planner::si_->distance(edge.first->stateConst(), edge.second->stateConst());
+
             bool res = Planner::si_->checkMotion(edge.first->stateConst(), edge.second->stateConst());
             end = std::chrono::high_resolution_clock::now();
             collcheck_time += static_cast< std::chrono::duration<double> >(end-start);
