@@ -45,6 +45,7 @@ namespace ompl
                 this->updateStartAndGoalStates(ompl::base::plannerAlwaysTerminatingCondition());
             }
 
+            //Commented out as
             //this->prune();
 
             if(numBatches_ > 1)
@@ -107,8 +108,8 @@ namespace ompl
                     if(sample_res)
                     {
                         ++numStateCollisionChecks_;
-                        if (Planner::si_->isValid(newState->stateConst()) == true)
-                        {
+                        //if (Planner::si_->isValid(newState->stateConst()) == true)
+                        //{
                             // Add the new state as a sample
                             this->addSample(newState);
 
@@ -117,7 +118,7 @@ namespace ompl
 
                             // Update the number of sample
                             ++numSamples_;
-                        }
+                        //}
                     }
                 }
             

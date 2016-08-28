@@ -126,7 +126,7 @@ namespace ompl
           , useStrictQueueOrdering_(false)
           , rewireFactor_(2.0)
           , samplesPerBatch_(100u)
-          , useKNearest_(true)
+          , useKNearest_(false)
           , usePruning_(true)
           , pruneFraction_(0.01)
           , delayRewiring_(true)
@@ -985,8 +985,8 @@ namespace ompl
 
                     // If the state is collision free, add it to the list of free states
                     ++numStateCollisionChecks_;
-                    if (Planner::si_->isValid(newState->stateConst()) == true)
-                    {
+                    //if (Planner::si_->isValid(newState->stateConst()) == true)
+                    //{
                         // Add the new state as a sample
                         this->addSample(newState);
 
@@ -995,7 +995,7 @@ namespace ompl
 
                         // Update the number of sample
                         ++numSamples_;
-                    }
+                    //}
                     // No else
                 }
 
