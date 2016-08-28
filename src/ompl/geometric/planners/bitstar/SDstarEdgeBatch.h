@@ -44,7 +44,15 @@ namespace ompl
 
             void newBatch() override;
 
+            void pruneSamples() override;
+
             void updateSamples() override;
+
+            void updateStartAndGoalStates(const base::PlannerTerminationCondition &ptc) override;
+
+            void addSample(const VertexPtr &newSample) override;
+
+            void dropSample(const VertexPtr &oldSample) override;
 
             void updateNearestTerms() override;
 
@@ -55,6 +63,8 @@ namespace ompl
             double radInflFactor_;
 
             double prevRadius_;
+
+            std::vector<VertexPtr> samplesNotPruned_;
 
         };
     } // namespace geometric

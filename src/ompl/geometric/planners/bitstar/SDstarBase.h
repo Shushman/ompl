@@ -56,6 +56,7 @@
 #include "ompl/base/Planner.h"
 // The nearest neighbours structure
 #include "ompl/datastructures/NearestNeighbors.h"
+#include "ompl/datastructures/NearestNeighborsGNAT.h"
 // The informed sampler structure
 #include "ompl/base/samplers/informed/RejectionInfPrecomputedSampler.h"
 // Planner includes:
@@ -360,20 +361,20 @@ namespace ompl
 
             /** \brief Adds any new goals or starts that have appeared in the problem definition to the list of vertices
              * and the queue. Creates a new informed sampler. Returns true if new starts/goals are created. */
-            void updateStartAndGoalStates(const base::PlannerTerminationCondition &ptc);
+            virtual void updateStartAndGoalStates(const base::PlannerTerminationCondition &ptc);
 
             /** \brief Prune the starts and goals that have a solution heuristic that is not less than bestCost_ */
             void pruneStartsGoals();
 
             /** \brief Prune all samples with a solution heuristic that is not less than the bestCost_ */
-            void pruneSamples();
+            virtual void pruneSamples();
 
             /** \brief Checks an edge for collision. A wrapper to SpaceInformation->checkMotion that tracks number of
              * collision checks. */
             virtual bool checkEdge(const VertexConstPtrPair &edge);
 
             /** \brief Actually remove a sample from its NN struct.*/
-            void dropSample(const VertexPtr &oldSample);
+            virtual void dropSample(const VertexPtr &oldSample);
 
             /** \brief Add an edge from the edge queue to the tree. Will add the state to the vertex queue if it's new
              * to the tree or otherwise replace the parent. Updates solution information if the solution improves. */

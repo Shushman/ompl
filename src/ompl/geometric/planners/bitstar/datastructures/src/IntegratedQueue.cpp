@@ -1706,6 +1706,7 @@ namespace ompl
             // The number of samples deleted (i.e., if this vertex is NOT moved to a sample, this is a 1)
             unsigned int deleted;
 
+
             // Check that the vertex is not connected to a parent:
             if (oldVertex->hasParent() == true && removeLookups == true)
             {
@@ -1771,7 +1772,6 @@ namespace ompl
 
                         // Remove myself from the nearest neighbour structure:
                         vertexNN->remove(oldVertex);
-
 
                         // Finally, mark as pruned. This is a lock that prevents accessing anything about the vertex.
                         oldVertex->markPruned();

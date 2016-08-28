@@ -277,13 +277,18 @@ namespace ompl
             // setNearestNeighbors)
             if (static_cast<bool>(freeStateNN_) == false)
             {
+                //std::cout<<"Num total samples - "<<numTotalSamples_<<std::endl;
                 freeStateNN_.reset(ompl::tools::SelfConfig::getDefaultNearestNeighbors<VertexPtr>(this));
+                //freeStateNN_.reset(new ompl::NearestNeighborsGNAT<VertexPtr>(
+                //                8,4,12,50,500,false));
             }
             // No else, already allocated (by a call to setNearestNeighbors())
 
             if (static_cast<bool>(vertexNN_) == false)
             {
                 vertexNN_.reset(ompl::tools::SelfConfig::getDefaultNearestNeighbors<VertexPtr>(this));
+                //vertexNN_.reset(new ompl::NearestNeighborsGNAT<VertexPtr>(
+                //                8,4,12,50,500,false));
             }
             // No else, already allocated (by a call to setNearestNeighbors())
 
@@ -1130,10 +1135,10 @@ namespace ompl
                  sIter != reversePath.rend(); ++sIter)
             {
                 pathGeoPtr->append(*sIter);
-                double *values = (*sIter) -> as<ompl::base::RealVectorStateSpace::StateType>()->values;
+                /*double *values = (*sIter) -> as<ompl::base::RealVectorStateSpace::StateType>()->values;
                 for (unsigned int i=0; i < Planner::si_->getStateDimension();i++)
                   std::cout<<values[i]<<",";
-                std::cout<<"\n";
+                std::cout<<"\n";*/ 
             }
 
             // Now create the solution
@@ -1225,6 +1230,8 @@ namespace ompl
 
                     // And add this goal to the set of samples:
                     this->addSample(goalVertices_.back());
+                    //freeStateNN_->add(goalVertices_.back());
+
 
                     // Mark that we've added:
                     addedGoal = true;
@@ -1286,6 +1293,8 @@ namespace ompl
 
                         // Add as a sample
                         this->addSample(*pgIter);
+                        //freeStateNN_->add(*pgIter);
+
 
                         // Mark what we've added:
                         addedGoal = true;
@@ -1513,7 +1522,7 @@ namespace ompl
 
                 // Get the list of samples
                 freeStateNN_->list(samples);
-
+ 
                 // Iterate through the list and remove any samples that have a heuristic larger than the bestCost_
                 for (auto &sample : samples)
                 {
@@ -1549,7 +1558,7 @@ namespace ompl
 
             // Remove from the list of samples
             freeStateNN_->remove(oldSample);
-
+ 
             // Mark the sample as pruned
             oldSample->markPruned();
         }
