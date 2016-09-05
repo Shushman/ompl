@@ -1182,8 +1182,6 @@ namespace ompl
                     // solution:
                     for (auto &neighbourVertice : neighbourVertices)
                     {
-                        if(vertex->getId() == 0 && neighbourVertice -> getId() == 2106)
-                            std::cout<<"0 <--> 2106 in C!"<<std::endl;
                         // Make sure it is not the root or myself.
                         if (neighbourVertice->isRoot() == false && neighbourVertice != vertex)
                         {

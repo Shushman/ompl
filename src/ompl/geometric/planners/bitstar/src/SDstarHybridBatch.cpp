@@ -3,7 +3,7 @@
 #include <iostream>
 #include <functional>
 #include <algorithm>
-#include "ompl/geometric/planners/bitstar/SDstarVertexBatch.h"
+#include "ompl/geometric/planners/bitstar/SDstarHybridBatch.h"
 #include "ompl/util/Console.h"
 #include "ompl/util/Exception.h"
 #include "ompl/base/samplers/informed/RejectionInfPrecomputedSampler.h"
@@ -12,37 +12,50 @@ namespace ompl
 {
     namespace geometric
     {
-        SDstarVertexBatch::SDstarVertexBatch(const ompl::base::SpaceInformationPtr &si, const std::string &name)
+
+        SDstarHybridBatch::SDstarHybridBatch(const ompl::base::SpaceInformationPtr &si, const std::string &name)
         : ompl::geometric::SDstarBase(si,name),
           initVertexSize_(0u),
           vertInflFactor_(0.0),
-          nextVertexTarget_(0u)
+          nextVertexTarget_(0u),
+          radInflFactor_(0.0),
+          currMode_(VERTEX)
           {
           }
 
-        SDstarVertexBatch::~SDstarVertexBatch() = default;
+        SDstarHybridBatch::~SDstarHybridBatch() = default;
 
-        void SDstarVertexBatch::setInitVertexSize(unsigned int initVertexSize)
+        void SDstarHybridBatch::setInitVertexSize(unsigned int initVertexSize)
         {
             initVertexSize_ = initVertexSize;
         }
 
-        unsigned int SDstarVertexBatch::getInitVertexSize() const
+        unsigned int SDstarHybridBatch::getInitVertexSize() const
         {
             return initVertexSize_;
         }
 
-        void SDstarVertexBatch::setVertexInflationFactor(double vertInflFactor)
+        void SDstarHybridBatch::setVertexInflationFactor(double vertInflFactor)
         {
             vertInflFactor_ = vertInflFactor;
         }
 
-        double SDstarVertexBatch::getVertexInflationFactor() const
+        double SDstarHybridBatch::getVertexInflationFactor() const
         {
             return vertInflFactor_;
         }
 
-        void SDstarVertexBatch::newBatch()
+        void SDstarHybridBatch::setRadiusInflationFactor(double radInflFactor)
+        {
+            radInflFactor_ = radInflFactor;
+        }
+
+        double SDstarHybridBatch::getRadiusInflationFactor() const
+        {
+            return radInflFactor_;
+        }
+
+        void SDstarHybridBatch::newBatch()
         {
             OMPL_INFORM("New Batch called!");
 
@@ -97,10 +110,19 @@ namespace ompl
 
             this -> updateSamples();
 
+            //int a;
+            //std::cin>>a;
+
         }
 
-        void SDstarVertexBatch::updateSamples()
+
+        void SDstarHybridBatch::updateSamples()
         {
+
+            if(currMode_ == EDGE){
+                return;
+            }
+
             ompl::base::Cost costReqd = bestCost_;
 
 
@@ -128,18 +150,18 @@ namespace ompl
                         //}
                     }
                 }
-                
-                if(sampler_ -> areStatesExhausted())
-                    OMPL_INFORM("SDstarVertexBatch : All states exhausted and %d samples!",numSamples_);
+                std::cout<<"Now "<<numSamples_<<" samples !"<<std::endl;
+                if(sampler_ -> areStatesExhausted()){
+                    OMPL_INFORM("SDstarHybridBatch : All states exhausted and %d samples!",numSamples_);
+                    currMode_ = EDGE;
+                }
                 costSampled_ = costReqd;
             }
         }
 
-
-        void SDstarVertexBatch::updateNearestTerms()
+        void SDstarHybridBatch::updateNearestTerms()
         {
             unsigned int N = numTotalSamples_;
-
             if (N == 0u)
             {
                 k_ = startVertices_.size() + goalVertices_.size();
@@ -147,24 +169,40 @@ namespace ompl
             }
             else
             {
-                if(numBatches_ == 1)
+                if(currMode_ == VERTEX)
                 {
-                    nextVertexTarget_ = initVertexSize_;
-                }
-                else
-                {
-                    nextVertexTarget_ = static_cast<unsigned int>(nextVertexTarget_ * vertInflFactor_);
+                    //std::cout<<"Inside VERTEX mode!"<<std::endl;
+                    if(numBatches_ == 0u)
+                    {
+                        r_ = std::numeric_limits<double>::infinity();
+                    }
+                    else if(numBatches_ == 1)
+                    {
+                        nextVertexTarget_ = initVertexSize_;
+                    }
+                    else
+                    {
+                        nextVertexTarget_ = std::min(numTotalSamples_,static_cast<unsigned int>(nextVertexTarget_ * vertInflFactor_));
+                    }
+
+                    if(this->getIsHaltonSeq())
+                        r_ = this->calculateRHalton(nextVertexTarget_)*2.5;
+                    else
+                        r_ = this->calculateR(nextVertexTarget_);
                 }
 
-                //Fully connected
-                k_ = nextVertexTarget_;
-                r_ = std::numeric_limits<double>::infinity();
+                else
+                {
+                    //AFTER 1st search with full samples and radius
+                    r_ = std::min(r_ * radInflFactor_,r_max_dynamic);
+                }
 
             }
             
+
         }
 
-        bool SDstarVertexBatch::checkEdge(const VertexConstPtrPair &edge)
+        bool SDstarHybridBatch::checkEdge(const VertexConstPtrPair &edge)
         {
             ++numEdgeCollisionChecks_;
             VertexIdPair fwdpair = std::make_pair(edge.first->getId(), edge.second->getId());
@@ -190,7 +228,5 @@ namespace ompl
             
             return res;
         }
-
-
-    } //namespace geometric
-}//namespace ompl
+    }
+}

@@ -104,6 +104,8 @@ namespace ompl
           ,  // Gets set in setup to the proper calls from OptimizationObjective
           costSampled_(std::numeric_limits<double>::infinity())
           ,  // Gets set in setup to the proper calls from OptimizationObjective
+          r_max_dynamic(std::numeric_limits<double>::infinity())
+          ,
           hasSolution_(false)
           , stopLoop_(false)
           , hasFullySearched_(false)
@@ -543,7 +545,6 @@ namespace ompl
 
             //std::chrono::duration<double> elapsed_seconds = end-start;
             //double time_result = elapsed_seconds.count();
-
             if(bestLength_ == 2)
                 hasFullySearched_ = true;
 
@@ -794,10 +795,13 @@ namespace ompl
                 {
                     // If not, then we're either just starting the problem, or just finished a batch. Either way, make a
                     // batch of samples and/or edges and fill the queue for the first time:
-                    bool dyn_cond = (useKNearest_ && k_ >= k_max_dynamic)
-                            ||  (!useKNearest_ && r_ >= r_max_dynamic);
+                    //std::cout<<"r - "<<r_<<std::endl;
+                    //std::cout<<"r_dyn - "<<r_max_dynamic<<std::endl;
 
-                    if(dyn_cond && sampler_ -> areStatesExhausted() == true)
+                    bool dyn_cond = (sampler_ -> areStatesExhausted() == true) &&
+                                  (r_ >= r_max_dynamic || r_max_dynamic == std::numeric_limits<double>::infinity());
+
+                    if(dyn_cond)
                     {
                         hasFullySearched_ = true;
                         return;
@@ -1542,8 +1546,6 @@ namespace ompl
             ++numEdgeCollisionChecks_;
             std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
             start = std::chrono::high_resolution_clock::now();
-            double dist = Planner::si_->distance(edge.first->stateConst(), edge.second->stateConst());
-
             bool res = Planner::si_->checkMotion(edge.first->stateConst(), edge.second->stateConst());
             end = std::chrono::high_resolution_clock::now();
             collcheck_time += static_cast< std::chrono::duration<double> >(end-start);
@@ -2461,6 +2463,16 @@ namespace ompl
               total_time = total_time / numEdgeCollisionChecks_;
             }
             return total_time;
+        }
+
+        unsigned int SDstarBase::getNumNearestNeighbors() const
+        {
+            return numNearestNeighbours_;
+        }
+
+        unsigned int SDstarBase::getNumEdgeCollisionChecks() const
+        {
+            return numEdgeCollisionChecks_;
         }
 
 

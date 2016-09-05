@@ -322,6 +322,10 @@ namespace ompl
 
             double getCollCheckTime(bool average=false) const;
 
+            unsigned int getNumEdgeCollisionChecks() const;
+
+            unsigned int getNumNearestNeighbors() const;
+
             ///////////////////////////////////////
 
         protected:
