@@ -66,6 +66,7 @@
 #include <chrono>
 #include <thread>
 
+
 namespace ompl
 {
     namespace geometric
@@ -403,6 +404,7 @@ namespace ompl
 
             // Finally initialize the nearestNeighbour terms:
             this->initializeNearestTerms();
+
 
             // Debug: Output an estimate of the state measure:
             // this->estimateMeasures();

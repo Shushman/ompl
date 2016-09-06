@@ -69,6 +69,8 @@
 // My queue class
 #include "ompl/geometric/planners/bitstar/datastructures/IntegratedQueue.h"
 
+#include <opencv2/core/core.hpp>
+
 // BIT*:
 // The helper data classes, Vertex.h and IntegratedQueue.h are included *after* the declaration of the BITstar class as
 // they are member classes of BITstar.
