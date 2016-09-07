@@ -441,6 +441,24 @@ namespace ompl
                 end = std::chrono::high_resolution_clock::now();
                 collcheck_time += static_cast< std::chrono::duration<double> >(end-start);
                 edgeCheckStatus.insert(std::make_pair(std::make_pair(edge.first->getId(), edge.second->getId()),res));
+            
+                ompl::base::State* st1 = Planner::si_ -> allocState();
+                Planner::si_ -> copyState(st1, edge.first->stateConst());
+                ompl::base::State* st2 = Planner::si_ -> allocState();
+                Planner::si_ -> copyState(st2, edge.second->stateConst());
+
+
+                double* vals1 = st1->as<
+                            ompl::base::RealVectorStateSpace::StateType>()->values;
+                double* vals2 = st2->as<
+                            ompl::base::RealVectorStateSpace::StateType>()->values;
+                cv::Point start_point((int)(vals1[0]*1000),(int)(vals1[1]*1000));
+                cv::Point end_point((int)(vals2[0]*1000),(int)(vals2[1]*1000));
+
+                edgeCheckPoints.push_back(std::make_pair(start_point,end_point));
+
+                Planner::si_ -> freeState(st1);
+                Planner::si_ -> freeState(st2); 
             }
             
             return res;

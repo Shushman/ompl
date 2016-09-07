@@ -61,7 +61,7 @@
 // For the default optimization objective:
 #include "ompl/base/objectives/PathLengthOptimizationObjective.h"
 
-#include <ompl/base/spaces/RealVectorStateSpace.h>
+
 
 #include <chrono>
 #include <thread>
@@ -1262,6 +1262,8 @@ namespace ompl
                 // Copy the value into the state:
                 Planner::si_->copyState(startVertices_.back()->state(), newStart);
 
+
+
                 // Add this start to the queue. It is not a sample, so skip that step:
                 this->addVertex(startVertices_.back(), false);
 
@@ -1551,6 +1553,24 @@ namespace ompl
             bool res = Planner::si_->checkMotion(edge.first->stateConst(), edge.second->stateConst());
             end = std::chrono::high_resolution_clock::now();
             collcheck_time += static_cast< std::chrono::duration<double> >(end-start);
+
+            ompl::base::State* st1 = Planner::si_ -> allocState();
+            Planner::si_ -> copyState(st1, edge.first->stateConst());
+            ompl::base::State* st2 = Planner::si_ -> allocState();
+            Planner::si_ -> copyState(st2, edge.second->stateConst());
+
+
+            double* vals1 = st1->as<
+                        ompl::base::RealVectorStateSpace::StateType>()->values;
+            double* vals2 = st2->as<
+                        ompl::base::RealVectorStateSpace::StateType>()->values;
+            cv::Point start_point((int)(vals1[0]*1000),(int)(vals1[1]*1000));
+            cv::Point end_point((int)(vals2[0]*1000),(int)(vals2[1]*1000));
+
+            edgeCheckPoints.push_back(std::make_pair(start_point,end_point));
+
+            Planner::si_ -> freeState(st1);
+            Planner::si_ -> freeState(st2); 
           
             return res;
         }
@@ -2475,6 +2495,110 @@ namespace ompl
         unsigned int SDstarBase::getNumEdgeCollisionChecks() const
         {
             return numEdgeCollisionChecks_;
+        }
+
+        void SDstarBase::clearEdgeCheckPoints()
+        {
+            edgeCheckPoints.clear();
+        }
+
+        void SDstarBase::getDebugImage(std::string imName, cv::Mat& debugImage) const
+        {
+            int rows = 1000, cols = 1000;
+            //cv::Mat debugImage(cv::Size(rows,cols),CV_8UC3);
+            
+                for(int y = 0; y < rows; y++)
+                {
+                    for(int x = 0; x < cols; x++)
+                    {
+                        cv::Vec3b color;
+                        color[0] = 255; color[1] = 255; color[2] = 255;
+                        debugImage.at<cv::Vec3b>(cv::Point(x,y)) = color;
+                    }
+                }
+            
+
+            // Now draw lines for edges checked
+            for(auto& ptpair : edgeCheckPoints)
+            {
+                //std::cout<<(128+15*numSoln)<<std::endl;
+                cv::line(debugImage,ptpair.first,ptpair.second,cv::Scalar(255,0,0),1,CV_AA);
+            }
+
+            //if (numSoln == 1)
+            //{
+            for(int y = 0; y < rows; y++)
+            {
+                for(int x = 0; x < cols; x++)
+                {
+                    cv::Vec3b color;
+
+                    ompl::base::ScopedState<ompl::base::RealVectorStateSpace>
+                        state(Planner::si_->getStateSpace());
+                    double * values = state->as<
+                        ompl::base::RealVectorStateSpace::StateType>()->values;
+                    values[0] = x*1.0/rows;
+                    values[1] = y*1.0/cols;
+
+                    if (Planner::si_->isValid(state.get()) == false)
+                    {
+                        color[0] = 0;
+                        color[1] = 0;
+                        color[2] = 0;
+                        debugImage.at<cv::Vec3b>(cv::Point(x,y)) = color;
+                    }
+                }  
+            }
+            //}
+
+            //Plot goal path
+            std::vector<const ompl::base::State *> reversePath
+                = this -> bestPathFromGoalToStart();
+            for(unsigned int i=0 ; i < reversePath.size()-1; i++)
+            {
+                double* vals1 = reversePath[i]->as<
+                    ompl::base::RealVectorStateSpace::StateType>()->values;
+                double* vals2 = reversePath[i+1]->as<
+                    ompl::base::RealVectorStateSpace::StateType>()->values;
+
+                cv::Point p1((int)(vals1[0]*1000),(int)(vals1[1]*1000));
+                cv::Point p2((int)(vals2[0]*1000),(int)(vals2[1]*1000));
+
+                cv::line(debugImage,p1,p2,cv::Scalar(255,105,180),5,CV_AA);
+            }
+
+
+            //if(numSoln == 1)
+            //{
+                // Now plot goal and start with blue dots
+                ompl::base::State* startCopy = Planner::si_ -> allocState();
+                Planner::si_->copyState(startCopy,startVertices_.front()->state());
+                ompl::base::State* goalCopy = Planner::si_ -> allocState();
+                Planner::si_->copyState(goalCopy,goalVertices_.front()->state());
+
+                int x,y;
+
+                double * startValues = startCopy->as<
+                    ompl::base::RealVectorStateSpace::StateType>()->values;
+                x = (int)(startValues[0]*cols);
+                y = (int)(startValues[1]*rows);
+                std::cout<<cv::Point(x,y)<<std::endl;
+                cv::circle(debugImage,cv::Point(x,y),10,cv::Scalar(0,255,0),-1);
+
+                double * goalValues = goalCopy->as<
+                    ompl::base::RealVectorStateSpace::StateType>()->values;
+                x = (int)(goalValues[0]*cols);
+                y = (int)(goalValues[1]*rows);
+                std::cout<<cv::Point(x,y)<<std::endl;
+                cv::circle(debugImage,cv::Point(x,y),10,cv::Scalar(0,0,255),-1);
+
+                Planner::si_->freeState(startCopy);
+                Planner::si_->freeState(goalCopy);
+            //}
+
+            //return debugImage;
+
+            //cv::imwrite(imName,debugImage);
         }
 
 

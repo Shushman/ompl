@@ -61,6 +61,7 @@ else(MSVC OR IS_ICPC)
 endif(MSVC OR IS_ICPC)
 target_link_libraries(ompl
   ${OMPL_LINK_LIBRARIES}
+  ${OpenCV_LIBS}
   ${Boost_DATE_TIME_LIBRARY}
   ${Boost_THREAD_LIBRARY}
   ${Boost_SERIALIZATION_LIBRARY}

@@ -68,6 +68,9 @@ endif(IS_ICPC)
 # have the try_join_for call
 find_package(Boost QUIET 1.50)
 
+find_package(OpenCV REQUIRED)
+include_directories(SYSTEM {OpenCV_INCLUDE_DIRS})
+
 # If Boost is not found at all, the check for version 1.50 below will die in
 # the most ungraceful manner because Boost_VERSION is not defined.  Define the
 # variable here for a more useful error.
@@ -169,7 +172,7 @@ add_subdirectory(src)
 
 # add_subdirectory(tests)
 
-add_subdirectory(demos)
+#add_subdirectory(demos)
 add_subdirectory(scripts)
 add_subdirectory(doc)
 

@@ -69,7 +69,10 @@
 // My queue class
 #include "ompl/geometric/planners/bitstar/datastructures/IntegratedQueue.h"
 
+#include <ompl/base/spaces/RealVectorStateSpace.h>
+
 #include <opencv2/core/core.hpp>
+#include <opencv2/opencv.hpp>
 
 // BIT*:
 // The helper data classes, Vertex.h and IntegratedQueue.h are included *after* the declaration of the BITstar class as
@@ -328,6 +331,9 @@ namespace ompl
 
             unsigned int getNumNearestNeighbors() const;
 
+            void getDebugImage(std::string imName, cv::Mat& debugImage) const;
+
+            void clearEdgeCheckPoints();
             ///////////////////////////////////////
 
         protected:
@@ -724,6 +730,8 @@ namespace ompl
 
             std::vector<VertexPtr> freeStates_;
             std::vector<VertexPtr> vertexStates_;
+
+            std::vector< std::pair<cv::Point,cv::Point> > edgeCheckPoints;
 
             ///////////////////////////////////////
 
