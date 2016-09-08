@@ -2598,7 +2598,7 @@ namespace ompl
 
             //return debugImage;
 
-            //cv::imwrite(imName,debugImage);
+            cv::imwrite(imName,debugImage);
         }
 
 
