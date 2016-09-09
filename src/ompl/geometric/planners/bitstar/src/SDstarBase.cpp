@@ -2502,10 +2502,11 @@ namespace ompl
             edgeCheckPoints.clear();
         }
 
-        void SDstarBase::getDebugImage(std::string imName, cv::Mat& debugImage) const
+        void SDstarBase::getDebugImage(std::string imName) const
         {
+            
             int rows = 1000, cols = 1000;
-            //cv::Mat debugImage(cv::Size(rows,cols),CV_8UC3);
+            cv::Mat debugImage(cv::Size(rows,cols),CV_8UC3);
             
                 for(int y = 0; y < rows; y++)
                 {
@@ -2551,20 +2552,23 @@ namespace ompl
             }
             //}
 
-            //Plot goal path
-            std::vector<const ompl::base::State *> reversePath
-                = this -> bestPathFromGoalToStart();
-            for(unsigned int i=0 ; i < reversePath.size()-1; i++)
+            if(hasSolution_ == true)
             {
-                double* vals1 = reversePath[i]->as<
-                    ompl::base::RealVectorStateSpace::StateType>()->values;
-                double* vals2 = reversePath[i+1]->as<
-                    ompl::base::RealVectorStateSpace::StateType>()->values;
+              //Plot goal path
+              std::vector<const ompl::base::State *> reversePath
+                  = this -> bestPathFromGoalToStart();
+              for(unsigned int i=0 ; i < reversePath.size()-1; i++)
+              {
+                  double* vals1 = reversePath[i]->as<
+                      ompl::base::RealVectorStateSpace::StateType>()->values;
+                  double* vals2 = reversePath[i+1]->as<
+                      ompl::base::RealVectorStateSpace::StateType>()->values;
 
-                cv::Point p1((int)(vals1[0]*1000),(int)(vals1[1]*1000));
-                cv::Point p2((int)(vals2[0]*1000),(int)(vals2[1]*1000));
+                  cv::Point p1((int)(vals1[0]*1000),(int)(vals1[1]*1000));
+                  cv::Point p2((int)(vals2[0]*1000),(int)(vals2[1]*1000));
 
-                cv::line(debugImage,p1,p2,cv::Scalar(255,105,180),5,CV_AA);
+                  cv::line(debugImage,p1,p2,cv::Scalar(255,105,180),5,CV_AA);
+              }
             }
 
 
@@ -2582,14 +2586,12 @@ namespace ompl
                     ompl::base::RealVectorStateSpace::StateType>()->values;
                 x = (int)(startValues[0]*cols);
                 y = (int)(startValues[1]*rows);
-                std::cout<<cv::Point(x,y)<<std::endl;
                 cv::circle(debugImage,cv::Point(x,y),10,cv::Scalar(0,255,0),-1);
 
                 double * goalValues = goalCopy->as<
                     ompl::base::RealVectorStateSpace::StateType>()->values;
                 x = (int)(goalValues[0]*cols);
                 y = (int)(goalValues[1]*rows);
-                std::cout<<cv::Point(x,y)<<std::endl;
                 cv::circle(debugImage,cv::Point(x,y),10,cv::Scalar(0,0,255),-1);
 
                 Planner::si_->freeState(startCopy);

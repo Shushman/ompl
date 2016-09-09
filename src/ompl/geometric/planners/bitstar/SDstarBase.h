@@ -51,6 +51,8 @@
 // std::chrono
 #include <chrono>
 
+#include <sstream>
+
 // OMPL:
 // The base-class of planners:
 #include "ompl/base/Planner.h"
@@ -331,7 +333,7 @@ namespace ompl
 
             unsigned int getNumNearestNeighbors() const;
 
-            void getDebugImage(std::string imName, cv::Mat& debugImage) const;
+            void getDebugImage(std::string imName) const;
 
             void clearEdgeCheckPoints();
             ///////////////////////////////////////

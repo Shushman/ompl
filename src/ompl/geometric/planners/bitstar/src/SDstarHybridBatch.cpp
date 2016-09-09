@@ -204,7 +204,7 @@ namespace ompl
 
         bool SDstarHybridBatch::checkEdge(const VertexConstPtrPair &edge)
         {
-            ++numEdgeCollisionChecks_;
+            
             VertexIdPair fwdpair = std::make_pair(edge.first->getId(), edge.second->getId());
             VertexIdPair backpair = std::make_pair(edge.second->getId(), edge.first->getId());
             bool res = false;
@@ -218,6 +218,7 @@ namespace ompl
             }
             else
             {
+                ++numEdgeCollisionChecks_;
                 std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
                 start = std::chrono::high_resolution_clock::now();
                 res = Planner::si_->checkMotion(edge.first->stateConst(), edge.second->stateConst());
