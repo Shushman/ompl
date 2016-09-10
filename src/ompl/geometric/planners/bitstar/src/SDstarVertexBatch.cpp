@@ -205,15 +205,15 @@ namespace ompl
                 Planner::si_ -> freeState(st1);
                 Planner::si_ -> freeState(st2); 
 
-                if(numEdgeCollisionChecks_ % 500 == 0)
-                {
-                    //std::cout<<"NOW EDGE CHECKS IS "<<numEdgeCollisionChecks_<<std::endl;
-                    std::stringstream oss;
-                    oss<<"vertexbatch_checks_"<<numEdgeCollisionChecks_<<".png";
-                    std::string imName(oss.str());
+                // if(numEdgeCollisionChecks_ % 500 == 0)
+                // {
+                //     //std::cout<<"NOW EDGE CHECKS IS "<<numEdgeCollisionChecks_<<std::endl;
+                //     std::stringstream oss;
+                //     oss<<"vertexbatch_checks_"<<numEdgeCollisionChecks_<<".png";
+                //     std::string imName(oss.str());
 
-                    getDebugImage(imName);
-                }
+                //     getDebugImage(imName);
+                // }
 
             }
             

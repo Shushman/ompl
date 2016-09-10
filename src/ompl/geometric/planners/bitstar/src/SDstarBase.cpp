@@ -2145,6 +2145,16 @@ namespace ompl
                         "currently has %u vertices.",
                         Planner::getName().c_str(), numIterations_, bestCost_.value(), bestLength_, numSamples_,
                         numEdgesProcessed_, numEdgeCollisionChecks_, numVertices_, numRewirings_, vertexNN_->size());
+            
+            // std::stringstream oss;
+            // if(Planner::getName() == "SDstarVertexBatch")
+            //     oss<<"vertexbatch_checks_"<<numEdgeCollisionChecks_<<".png";
+            // else
+            //     oss<<"edgebatch_checks_"<<numEdgeCollisionChecks_<<".png";
+
+            // std::string imName(oss.str());
+            // getDebugImage(imName);
+
         }
 
         void SDstarBase::endSuccessMessage() const
@@ -2567,7 +2577,7 @@ namespace ompl
                   cv::Point p1((int)(vals1[0]*1000),(int)(vals1[1]*1000));
                   cv::Point p2((int)(vals2[0]*1000),(int)(vals2[1]*1000));
 
-                  cv::line(debugImage,p1,p2,cv::Scalar(255,105,180),5,CV_AA);
+                  cv::line(debugImage,p1,p2,cv::Scalar(203,192,255),5,CV_AA);
               }
             }
 
