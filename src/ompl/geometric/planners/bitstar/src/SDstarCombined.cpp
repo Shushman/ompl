@@ -15,70 +15,61 @@ namespace ompl
     {
 
         SDstarCombined::SDstarCombined(const ompl::base::SpaceInformationPtr &si, const std::string &name)
-        : ompl::geometric::SDstarBase(si,name),
-          initVertexSize_(0u),
-          vertInflFactor_(0.0),
-          nextVertexTarget_(0u)
+        : ompl::geometric::SDstarBase(si,name)
           {
           }
 
 
         SDstarCombined::~SDstarCombined() = default;
 
-        void SDstarCombined::setInitVertexSize(unsigned int initVertexSize)
-        {
-            initVertexSize_ = initVertexSize;
-        }
-
-        unsigned int SDstarCombined::getInitVertexSize() const
-        {
-            return initVertexSize_;
-        }
-
-        void SDstarCombined::setVertexInflationFactor(double vertInflFactor)
-        {
-            vertInflFactor_ = vertInflFactor;
-        }
-
-        double SDstarCombined::getVertexInflationFactor() const
-        {
-            return vertInflFactor_;
-        }
 
         void SDstarCombined::updateSamples()
         {
+            // Variable
+            // The required cost to contain the neighbourhood of this vertex:
             ompl::base::Cost costReqd = bestCost_;
 
-
+            // Check if we need to generate new samples inorder to completely cover the neighbourhood of the vertex
             if (opt_->isCostBetterThan(costSampled_, costReqd))
             {
-                while (numSamples_ < nextVertexTarget_ && sampler_ -> areStatesExhausted() == false)
+                // Variable
+                // The total number of samples we wish to have.
+                unsigned int totalReqdSamples;
+
+                totalReqdSamples = numSamples_ + samplesPerBatch_;
+                //}
+
+                // Actually generate the new samples
+                while (numSamples_ < totalReqdSamples && sampler_ -> areStatesExhausted() == false)
                 {
+                    // Variable
+                    // The new state:
                     VertexPtr newState = std::make_shared<BITstar::Vertex>(Planner::si_, opt_);
 
-                    bool sample_res = sampler_->sampleUniform(newState->state(), costReqd);
+                    // Sample in the interval [costSampled_, costReqd):
+                    sampler_->sampleUniform(newState->state(), costSampled_, costReqd);
 
-                    if(sample_res)
-                    {
-                        ++numStateCollisionChecks_;
-                        //if (Planner::si_->isValid(newState->stateConst()) == true)
-                        //{
-                            // Add the new state as a sample
-                            this->addSample(newState);
+                    // If the state is collision free, add it to the list of free states
+                    ++numStateCollisionChecks_;
+                    //if (Planner::si_->isValid(newState->stateConst()) == true)
+                    //{
+                        // Add the new state as a sample
+                        this->addSample(newState);
 
-                            // Update the number of uniformly distributed states
-                            ++numUniformStates_;
+                        // Update the number of uniformly distributed states
+                        ++numUniformStates_;
 
-                            // Update the number of sample
-                            ++numSamples_;
-                        //}
-                    }
+                        // Update the number of sample
+                        ++numSamples_;
+                    //}
+                    // No else
                 }
-                
-                if(sampler_ -> areStatesExhausted())
-                    OMPL_INFORM("SDstarCombined : All states exhausted and %d samples!",numSamples_);
+
+                // Mark that we've sampled all cost spaces (This is in preparation for JIT sampling)
                 costSampled_ = costReqd;
             }
+            OMPL_INFORM("Now %d samples!",numSamples_);
+            // No else, the samples are up to date
         }
 
         void SDstarCombined::updateNearestTerms()
@@ -91,21 +82,11 @@ namespace ompl
             }
             else
             {
-
-                if(numBatches_ == 1)
-                {
-                    nextVertexTarget_ = initVertexSize_;
-                }
-                else
-                {
-                    nextVertexTarget_ = std::min(numTotalSamples_,static_cast<unsigned int>(nextVertexTarget_ * vertInflFactor_));
-                }
-
-                unsigned int N  = nextVertexTarget_;
+                unsigned int N = std::min(numSamples_+samplesPerBatch_,numTotalSamples_);
 
                 k_ = this->calculateK(N);
                 if(this->getIsHaltonSeq())
-                    r_ = this->calculateRHalton(N)*2.5;
+                    r_ = this->calculateRHalton(N)*9.0;
                 else
                     r_ = this->calculateR(N);
             }
@@ -115,7 +96,7 @@ namespace ompl
 
         bool SDstarCombined::checkEdge(const VertexConstPtrPair &edge)
         {
-            ++numEdgeCollisionChecks_;
+            
             VertexIdPair fwdpair = std::make_pair(edge.first->getId(), edge.second->getId());
             VertexIdPair backpair = std::make_pair(edge.second->getId(), edge.first->getId());
             bool res = false;
@@ -129,6 +110,7 @@ namespace ompl
             }
             else
             {
+                ++numEdgeCollisionChecks_;
                 std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
                 start = std::chrono::high_resolution_clock::now();
                 res = Planner::si_->checkMotion(edge.first->stateConst(), edge.second->stateConst());

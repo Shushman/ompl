@@ -50,12 +50,6 @@ namespace ompl
 
             bool checkEdge(const VertexConstPtrPair &edge) override;
 
-            unsigned int initVertexSize_;
-
-            unsigned int nextVertexTarget_;
-
-            double vertInflFactor_;
-
         };
     }
 }

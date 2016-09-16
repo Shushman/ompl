@@ -47,6 +47,8 @@
 // std::list
 #include <list>
 
+#include <chrono>
+
 // OMPL:
 // The base-class of planners:
 #include "ompl/base/Planner.h"
@@ -712,6 +714,8 @@ namespace ompl
             /** \brief The number of edges processed, in one way or other, from the queue. Accessible via
              * edgesProcessedProgressProperty */
             unsigned int numEdgesProcessed_;
+
+            std::chrono::time_point<std::chrono::high_resolution_clock> solve_start;
             ///////////////////////////////////////
 
             ///////////////////////////////////////

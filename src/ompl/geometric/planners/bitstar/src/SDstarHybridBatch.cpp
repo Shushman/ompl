@@ -21,6 +21,12 @@ namespace ompl
           radInflFactor_(0.0),
           currMode_(VERTEX)
           {
+              Planner::declareParam<double>("vert_inflation",this,&SDstarHybridBatch::setVertexInflationFactor,
+                                            &SDstarHybridBatch::getVertexInflationFactor);
+              Planner::declareParam<unsigned int>("init_vertices",this,&SDstarHybridBatch::setInitVertexSize,
+                                            &SDstarHybridBatch::getInitVertexSize);
+              Planner::declareParam<double>("rad_inflation",this,&SDstarHybridBatch::setRadiusInflationFactor,
+                                            &SDstarHybridBatch::getRadiusInflationFactor);
           }
 
         SDstarHybridBatch::~SDstarHybridBatch() = default;
@@ -186,7 +192,7 @@ namespace ompl
                     }
 
                     if(this->getIsHaltonSeq())
-                        r_ = this->calculateRHalton(nextVertexTarget_)*2.5;
+                        r_ = this->calculateRHalton(nextVertexTarget_)*9.0;
                     else
                         r_ = this->calculateR(nextVertexTarget_);
                 }
@@ -199,6 +205,7 @@ namespace ompl
 
             }
             
+            std::cout<<"Radius is "<<r_<<std::endl;
 
         }
 

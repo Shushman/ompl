@@ -40,6 +40,8 @@
 // STL:
 // std::string
 #include <string>
+
+#include <fstream>
 // std::pair
 #include <utility>
 // std::vector
@@ -318,7 +320,11 @@ namespace ompl
 
             bool getHasFullySearched() const;
 
-            void initSampler(const std::vector<const ompl::base::State *> &states);
+            void setValidStatesFromFile(const std::string filename);
+
+            std::string getValidStatesFromFile() const;
+
+            void initSampler();
 
             double getNbrsTime(bool average=false) const;
 
@@ -721,6 +727,7 @@ namespace ompl
 
             bool isUsingStates_;
 
+            std::vector<const ompl::base::State*> filtered_states;
 
             std::vector<VertexPtr> freeStates_;
             std::vector<VertexPtr> vertexStates_;
@@ -778,7 +785,7 @@ namespace ompl
             //Timing data
             std::chrono::duration<double> nbrs_time;
             std::chrono::duration<double> collcheck_time;
-
+            std::chrono::time_point<std::chrono::high_resolution_clock> solve_start;
 
 
             ///////////////////////////////////////

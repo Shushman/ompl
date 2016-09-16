@@ -225,6 +225,7 @@ namespace ompl
 
         void BITstar::setup()
         {
+            solve_start = std::chrono::high_resolution_clock::now();
             // Call the base class setup:
             Planner::setup();
 
@@ -497,7 +498,7 @@ namespace ompl
 
             // Run the outerloop until we're stopped, a suitable cost is found, or until we find the minimum possible
             // cost within tolerance:
-            while (opt_->isSatisfied(bestCost_) == false && ptc == false &&
+            while (opt_->isSatisfied(bestCost_) == false && //ptc == false &&
                    (opt_->isCostBetterThan(minCost_, bestCost_) == true ||
                     Planner::pis_.haveMoreStartStates() == true || Planner::pis_.haveMoreGoalStates() == true) &&
                    stopLoop_ == false)
@@ -1644,6 +1645,10 @@ namespace ompl
 
                 // Brag:
                 this->goalMessage();
+                std::chrono::time_point<std::chrono::high_resolution_clock> curr_time;
+                curr_time = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> time_from_solve = curr_time - solve_start;
+                std::cout<<bestCost_.value()<<" "<<time_from_solve.count()<<std::endl;
 
                 // If enabled, pass the intermediate solution back through the call back:
                 if (static_cast<bool>(Planner::pdef_->getIntermediateSolutionCallback()) == true)
@@ -1948,6 +1953,7 @@ namespace ompl
                     r_ = this->calculateR(N);
                 }
             }
+            OMPL_INFORM("Current r-value is %f",r_);
         }
 
         double BITstar::calculateR(unsigned int N) const

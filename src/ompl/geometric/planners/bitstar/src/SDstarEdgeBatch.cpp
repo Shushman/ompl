@@ -16,6 +16,8 @@ namespace ompl
         : ompl::geometric::SDstarBase(si,name),
           radInflFactor_(0.0)
         {
+            Planner::declareParam<double>("rad_inflation",this,&SDstarEdgeBatch::setRadiusInflationFactor,
+                                            &SDstarEdgeBatch::getRadiusInflationFactor);
         }
 
         SDstarEdgeBatch::~SDstarEdgeBatch() = default;
@@ -166,7 +168,7 @@ namespace ompl
                         prevRadius_ = 0.0;
                         if(this->getIsHaltonSeq())
                             //From Janson-Pavone paper
-                            r_ = this->calculateRHalton(N)*2.5;
+                            r_ = this->calculateRHalton(N)*9.0;
                         else
                             r_ = this->calculateR(N);
                     }

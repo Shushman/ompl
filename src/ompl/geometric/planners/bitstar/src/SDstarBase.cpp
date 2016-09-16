@@ -136,7 +136,7 @@ namespace ompl
           //, useJustInTimeSampling_(false)
           , dropSamplesOnPrune_(false)
           , stopOnSolnChange_(false)
-          , isHaltonSeq_(false)
+          , isHaltonSeq_(true)
           , isUsingStates_(false)
         {
             // Make sure the default name reflects the default k-nearest setting, if not overridden to something else
@@ -177,6 +177,10 @@ namespace ompl
                                         &SDstarBase::getDropSamplesOnPrune, "0,1");
             Planner::declareParam<bool>("stop_on_each_solution_improvement", this, &SDstarBase::setStopOnSolnImprovement,
                                         &SDstarBase::getStopOnSolnImprovement, "0,1");
+            Planner::declareParam<bool>("is_using_halton", this, &SDstarBase::setIsHaltonSeq,
+                                        &SDstarBase::getIsHaltonSeq);
+            Planner::declareParam<std::string>("states_filename",this, &SDstarBase::setValidStatesFromFile,
+                                        &SDstarBase::getValidStatesFromFile);
 
             // More advanced setting callbacks that aren't necessary to be exposed to Python. Uncomment if desired.
             // Planner::declareParam<bool>("use_strict_queue_ordering", this, &SDstarBase::setStrictQueueOrdering,
@@ -405,7 +409,7 @@ namespace ompl
             // Finally initialize the nearestNeighbour terms:
             this->initializeNearestTerms();
 
-
+            initSampler();
             // Debug: Output an estimate of the state measure:
             // this->estimateMeasures();
         }
@@ -502,6 +506,7 @@ namespace ompl
 
         ompl::base::PlannerStatus SDstarBase::solve(const ompl::base::PlannerTerminationCondition &ptc)
         {
+            solve_start = std::chrono::high_resolution_clock::now();
             Planner::checkValidity();
             //std::chrono::time_point<std::chrono::high_resolution_clock> start,end;
             OMPL_INFORM("%s: Searching for a solution to the given planning problem.", Planner::getName().c_str());
@@ -518,12 +523,21 @@ namespace ompl
 
             // Run the outerloop until we're stopped, a suitable cost is found, or until we find the minimum possible
             // cost within tolerance, OR until all states are exhausted:
-            while (opt_->isSatisfied(bestCost_) == false && ptc == false &&
+            while (opt_->isSatisfied(bestCost_) == false && //ptc == false &&
                    (opt_->isCostBetterThan(minCost_, bestCost_) == true ||
                     Planner::pis_.haveMoreStartStates() == true || Planner::pis_.haveMoreGoalStates() == true) &&
                    stopLoop_ == false && hasFullySearched_ == false)
             {
                 this->iterate();
+                // std::cout<<"Conditions!"<<std::endl;
+                // std::cout<<(opt_->isSatisfied(bestCost_)&& ptc &&
+                //    opt_->isCostBetterThan(minCost_, bestCost_))<<std::endl;
+                // std::cout<<(opt_->isSatisfied(bestCost_) == false)<<std::endl;
+                // std::cout<<(ptc==false)<<std::endl;
+                // std::cout<<(opt_->isCostBetterThan(minCost_, bestCost_) == true)<<std::endl;
+                // std::cout<<stopLoop_<<std::endl;
+                // std::cout<<hasFullySearched_<<std::endl;
+
             }
 
             if (hasSolution_ == true)
@@ -775,6 +789,7 @@ namespace ompl
         {
             // Info:
             ++numIterations_;
+            //std::cout<<"ITERATE CALLED!"<<std::endl;
 
             // If we're using strict queue ordering, make sure the queues are up to date
             if (useStrictQueueOrdering_ == true)
@@ -805,6 +820,7 @@ namespace ompl
 
                     if(dyn_cond)
                     {
+                        //std::cout<<"DYN COND SATISFIED!"<<std::endl;
                         hasFullySearched_ = true;
                         return;
                     }  
@@ -824,6 +840,8 @@ namespace ompl
                 // Pop the minimum edge
                 ++numEdgesProcessed_;
                 intQueue_->popFrontEdge(&bestEdge);
+
+                //std::cout<<"Front edge popped!"<<std::endl;
 
                 // In the best case, can this edge improve our solution given the current graph?
                 // g_t(v) + c_hat(v,x) + h_hat(x) < g_t(x_g)
@@ -1241,6 +1259,7 @@ namespace ompl
 
                     // Mark that we've added:
                     addedGoal = true;
+                    std::cout<<"ADDED GOAL"<<std::endl;
                 }
                 // No else, there was no goal.
             } while (Planner::pis_.haveMoreGoalStates() == true);
@@ -1267,6 +1286,8 @@ namespace ompl
 
                 // Mark that we've added:
                 addedStart = true;
+
+                std::cout<<"ADDED START!"<<std::endl;
             }
 
             // Now, if we added a new start and have previously pruned goals, we may want to readd them.
@@ -1742,6 +1763,11 @@ namespace ompl
 
                 // Brag:
                 this->goalMessage();
+                std::chrono::time_point<std::chrono::high_resolution_clock> curr_time;
+                curr_time = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> time_from_solve = curr_time - solve_start;
+                std::cout<<bestCost_.value()<<" "<<time_from_solve.count()<<std::endl;
+              
 
                 // If enabled, pass the intermediate solution back through the call back:
                 if (static_cast<bool>(Planner::pdef_->getIntermediateSolutionCallback()) == true)
@@ -2443,10 +2469,56 @@ namespace ompl
         }
 
 
-        void SDstarBase::initSampler(const std::vector<const ompl::base::State *> &states)
+        void SDstarBase::setValidStatesFromFile(const std::string filename)
         {
-            sampler_ = std::make_shared< ompl::base::RejectionInfPrecomputedSampler >(Planner::pdef_, Planner::si_->getStateSpace(), states);
-            numTotalSamples_ = states.size();
+            std::ifstream infile(filename);
+            std::cout<<"reading file - "<<filename<<std::endl;
+            std::string line;
+            unsigned int numNodes;
+
+            //First line - number of states
+            if(std::getline(infile,line)){
+                std::istringstream iss(line);
+                iss >> numNodes;
+            }
+            else
+            {
+                throw std::runtime_error("Number of nodes not defined!");
+            }
+
+            unsigned int nDims = Planner::si_ -> getStateDimension();
+
+            while(std::getline(infile,line))
+            {
+                std::istringstream iss(line);
+                ompl::base::State* new_state = Planner::si_ -> allocState();
+
+                double *values = new_state ->as< ompl::base::RealVectorStateSpace::StateType >() -> values;
+
+                for(unsigned int i=0; i < nDims; i++){
+                    iss >> values[i];
+                }
+                if(Planner::si_ -> isValid(new_state) == true){
+                    filtered_states.push_back(new_state);
+                }
+            }
+
+            std::cout<<"There are "<<filtered_states.size()<<" states valid!"<<std::endl;
+
+        }
+
+        std::string SDstarBase::getValidStatesFromFile() const
+        {
+            return "null";
+        }
+
+
+        void SDstarBase::initSampler()
+        {
+            std::cout<<"INSIDE INIT SAMPLER with "<<filtered_states.size()<<" states !"<<std::endl;
+
+            sampler_ = std::make_shared< ompl::base::RejectionInfPrecomputedSampler >(Planner::pdef_, Planner::si_->getStateSpace(), filtered_states);
+            numTotalSamples_ = filtered_states.size();
         }
 
         double SDstarBase::getNbrsTime(bool average) const

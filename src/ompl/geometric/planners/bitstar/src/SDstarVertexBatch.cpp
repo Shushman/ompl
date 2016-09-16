@@ -18,6 +18,11 @@ namespace ompl
           vertInflFactor_(0.0),
           nextVertexTarget_(0u)
           {
+
+              Planner::declareParam<double>("vert_inflation",this,&SDstarVertexBatch::setVertexInflationFactor,
+                                            &SDstarVertexBatch::getVertexInflationFactor);
+              Planner::declareParam<unsigned int>("init_vertices",this,&SDstarVertexBatch::setInitVertexSize,
+                                            &SDstarVertexBatch::getInitVertexSize);
           }
 
         SDstarVertexBatch::~SDstarVertexBatch() = default;
